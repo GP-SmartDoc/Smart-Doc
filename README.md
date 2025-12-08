@@ -1,33 +1,33 @@
 # Smart-Doc
 Multimodal text summarization and visualization
 
-🌟 Key Features
+## 🌟 Key Features
 
-🔹 Multimodal Summarization
+### 🔹 Multimodal Summarization
 
-   Extractive & abstractive summaries
+      Extractive & abstractive summaries
 
-   Hierarchical (TL;DR → section → full) summaries
+      Hierarchical (TL;DR → section → full) summaries
 
-   Handles large PDFs, academic papers & technical documents
+      Handles large PDFs, academic papers & technical documents
 
-🔹 Multi-Agent Architecture
+### 🔹 Multi-Agent Architecture
 
-   Inspired by top research frameworks (MDocAgent, PreGenie, Metal):
+      Inspired by top research frameworks (MDocAgent, PreGenie, Metal):
 
-   Reader Agent – processes documents & extracts structure
+      Reader Agent – processes documents & extracts structure
 
-   Summarizer Agent – creates multi-level summaries
+      Summarizer Agent – creates multi-level summaries
 
-   Diagram Agent – generates visual diagrams (Mermaid)
+      Diagram Agent – generates visual diagrams (Mermaid)
 
-   Slide Generator Agent – builds Slidev-ready presentations
+      Slide Generator Agent – builds Slidev-ready presentations
 
-   QA Agent – answers questions based on document content
+      QA Agent – answers questions based on document content
 
-   Agents coordinate through shared memory and message passing.
+      Agents coordinate through shared memory and message passing.
 
-🔹 Automatic Diagram Generation (Mermaid.js)
+### 🔹 Automatic Diagram Generation (Mermaid.js)
 
    Creates:
 
@@ -41,7 +41,7 @@ Multimodal text summarization and visualization
 
       Architecture diagrams
 
-🔹 Slidev Presentation Builder
+### 🔹 Slidev Presentation Builder
 
    Automatically generates:
 
@@ -55,65 +55,60 @@ Multimodal text summarization and visualization
 
       Structured learning flow
 
-🔹 Document Question Answering
+### 🔹 Document Question Answering
 
-   Uses retrieval + reasoning
+      Uses retrieval + reasoning
 
-   Context-aware responses
+      Context-aware responses
 
-   Ideal for research papers, technical documentation & reports
+      Ideal for research papers, technical documentation & reports
 
-📁 Project Structure
-   after done
+## 📁 Project Structure
+      after done
 
-🔧 Technologies
+## 🔧 Technologies
 
-🔹 AI & NLP
+### 🔹 AI & NLP
 
-   LLMs (OpenAI, GPT, Llama, etc.)
+      LLMs (OpenAI, GPT, Llama, etc.)
 
-   Embeddings (semantic understanding)
+      Embeddings (semantic understanding)
 
-   Retrieval-Augmented Generation (RAG)
+      Retrieval-Augmented Generation (RAG)
 
-   Multi-agent orchestration
+      Multi-agent orchestration
 
-🔹 Visualization
+### 🔹 Visualization
 
-   Mermaid.js
+      Mermaid.js
 
-   Slidev
+      Slidev
 
-🔹 Development
+### 🔹 Development
 
-   Python
+      Python
 
-   Node.js
+      Node.js
 
-   Markdown / YAML automation
+      Markdown / YAML automation
 
-📦 Installation
-   1. Clone the repository
-      git clone https://github.com/GP-SmartDoc/Smart-Doc
+## 📦 Installation
+      1. Clone the repository: git clone https://github.com/GP-SmartDoc/Smart-Doc
       cd Smart-Doc
+      2. Install Python dependencies:  after done
+      3. Install Slidev: after done
    
-   2.Install Python dependencies
-      after done
+## 📚 Inspirations & Related Work
 
-   3. Install Slidev
-      after done
-   
-📚 Inspirations & Related Work
+      MDocAgent – multi-agent document understanding
 
-   MDocAgent – multi-agent document understanding
+      PreGenie – LLM automated slide creation
 
-   PreGenie – LLM automated slide creation
+      Metal Multi-Agent systems
 
-   Metal Multi-Agent systems
+      Modern LLM-driven diagram generation frameworks
 
-   Modern LLM-driven diagram generation frameworks
-
-🤝 Contributing
+## 🤝 Contributing
 
    We welcome contributions including:
 
@@ -129,6 +124,6 @@ Multimodal text summarization and visualization
 
 Please follow the organization’s contribution guidelines.
 
-📄 License
+## 📄 License
 
-   MIT License
+      MIT License
