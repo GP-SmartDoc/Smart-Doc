@@ -1,0 +1,1 @@
+chromadb sentence-transformers open-clip-torch langchain-community pypdf pymupdf pillow transformers accelerate pytest
