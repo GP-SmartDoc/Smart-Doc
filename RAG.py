@@ -9,15 +9,6 @@ import os
 import io
 import uuid
 import fitz  # PyMuPDF
-'''
-Notes:
-    1. chromadb.Client() should be changed to PersistentClient() later. Client() is in-memory.
-    2. The RAGEngine should not create the Client object, it should get injected to it.
-        chromadb is known for concurency bug and having multiple clinets will cause such triuvle
-    3. An even better practice than (2) is to run chroma as in individual service and access it 
-        through an API. Should put some thought into that
-    4. Whys is add_image()'s logic slightly different than addding images in add_pdf() ?
-'''
 
 class RAGEngine:
     """
@@ -142,18 +133,28 @@ class RAGEngine:
             a dictionary in the form {"text": list[str], "images":list[str]} conntaining the 
             retrieved text chunks and retrieved image paths
         """
-        text_results = self.__text_collection.query(
-            query_texts=[prompt],
-            n_results=k_text
-        )
-        retrieved_text = text_results["documents"][0] if text_results["documents"] else ""
+        # Defaults
+        retrieved_text = []
+        retrieved_image_paths = []
+
+        # --- FIX: Only query if k > 0 ---
+        if k_text > 0:
+            text_results = self.__text_collection.query(
+                query_texts=[prompt],
+                n_results=k_text
+            )
+            # text_results["documents"] is a list of lists (one list per query)
+            if text_results.get("documents") and len(text_results["documents"]) > 0:
+                retrieved_text = text_results["documents"][0]
         
-        image_results = self.__image_collection.query(
-            query_texts=[prompt],
-            n_results=k_image,
-            include=["uris", "distances"]
-        )
-        retrieved_image_paths = image_results["uris"][0] if image_results["uris"] else []
+        if k_image > 0:
+            image_results = self.__image_collection.query(
+                query_texts=[prompt],
+                n_results=k_image,
+                include=["uris", "distances"]
+            )
+            if image_results.get("uris") and len(image_results["uris"]) > 0:
+                retrieved_image_paths = image_results["uris"][0]
         
         return {
             "text": retrieved_text,

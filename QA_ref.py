@@ -1,5 +1,4 @@
 from langchain.tools import tool
-#from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain.messages import AnyMessage, HumanMessage, AIMessage
@@ -15,13 +14,12 @@ import base64
 from RAG import RAGEngine
 
 class QuestionAnsweringGraphState(TypedDict):
-    messages: Annotated[list[str], operator.add]
-    # FIX: Use Annotated with operator.add to handle parallel updates
-    llm_calls: Annotated[int, operator.add]
+    messages:Annotated[list[str], operator.add]
+    llm_calls:int
 
     user_question:str
     retrieved_text:str
-    retrieved_images:list[str] 
+    retrieved_images:list[str] # <-- ?????
 
     ga_output:str
     ca_output:str
@@ -30,7 +28,7 @@ class QuestionAnsweringGraphState(TypedDict):
     sa_output:str
 
 class QuestionAnsweringModule():
-    def __init__(self, retriever:RAGEngine, model:BaseChatModel = ChatOllama(model="qwen3-vl:4b", temperature=0)):
+    def __init__(self, retriever:RAGEngine, model:BaseChatModel = ChatOllama(model="qwen3:8b",temperature=0)):
         self.__retriever = retriever
         self.__model = model
         self.__workflow_builder = StateGraph(QuestionAnsweringGraphState)
@@ -49,16 +47,16 @@ class QuestionAnsweringModule():
                     HumanMessage(
                         content=f"""
                             Textual Content: {state.get("retrieved_text", "No text provided")}
+                            Image Content: {state.get("retrieved_images", "No images provided")}
                             Question: {state.get("user_question", "")}
                         """
                     )
                 ]
             )
-            
-            # FIX: Return only the increment (1), not the total
+                    
             return {
                 "messages": [agent_answer],
-                "llm_calls": 1,
+                "llm_calls": state.get('llm_calls', 0) + 1,
                 "ga_output": agent_answer.content
             }
 
@@ -73,19 +71,20 @@ class QuestionAnsweringModule():
                             Question: {state.get("user_question", "")}
                             Preliminary Answer: {state.get("ga_output"), ""}
                             Textual Content: {state.get("retrieved_text", "No text provided")}
+                            Image Content: {state.get("retrieved_images", "No images provided")}
                         """
                     )
                 ]
             )
                     
-            # FIX: Return only the increment (1)
             return {
                 "messages": [agent_answer],
-                "llm_calls": 1,
+                "llm_calls": state.get('llm_calls', 0) + 1,
                 "ca_output": agent_answer.content
             }
 
         def _text_agent(state:dict):
+            # The critical agents returns a json
             critical_agent_output = json.loads(clean_json_string(state.get("ca_output", "")))
             critical_text_info = critical_agent_output.get("text")
             agent_answer:AIMessage = self.__model.invoke(
@@ -102,11 +101,10 @@ class QuestionAnsweringModule():
                     )
                 ]
             )
-            
-            # FIX: Return only the increment (1)
+                    
             return {
                 "messages": [agent_answer],
-                "llm_calls": 1,
+                "llm_calls": state.get('llm_calls', 0) + 1,
                 "ta_output": agent_answer.content
             }
 
@@ -122,7 +120,7 @@ class QuestionAnsweringModule():
                 for img_b64 in state.get("retrieved_images"):
                     msg_content.append({
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+                        "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}
                     })
                     
             agent_answer:AIMessage = self.__model.invoke(
@@ -142,11 +140,13 @@ class QuestionAnsweringModule():
 
             return {
                 "messages": [agent_answer],
-                "llm_calls": 1,
+                "llm_calls": state.get('llm_calls', 0) + 1,
                 "ia_output": agent_answer.content
             }
 
+
         def _summarizing_agent(state:dict):
+
             agent_answer:AIMessage = self.__model.invoke(
                 [
                     SystemMessage(
@@ -157,15 +157,15 @@ class QuestionAnsweringModule():
                             Question: {state.get("user_question", "")}
                             Preliminary Answer: {state.get("ga_output", "")}
                             Text Agent Answer: {state.get("ta_output", "")}
+                            Image Agent Answer: {state.get("ia_output", "")}
                         """
                     )
                 ]
             )
-            
-            # FIX: Return only the increment (1)
+                    
             return {
                 "messages": [agent_answer],
-                "llm_calls": 1,
+                "llm_calls": state.get('llm_calls', 0) + 1,
                 "sa_output": agent_answer.content
             }
         
@@ -186,22 +186,21 @@ class QuestionAnsweringModule():
         self.__workflow = self.__workflow_builder.compile()
 
     def invoke_workflow(self, prompt:str)->str:
-        # Query RAG (Ensure RAG.py is also fixed to handle k_image=0 as per previous step)
-        retrieved_data = self.__retriever.query(prompt, k_text=5, k_image=5)
+        retrieved_data = self.__retriever.query(prompt)
         
         text_content = retrieved_data.get("text")
-        #debug 1
-        print(text_content)
         if not text_content:
-            text_content = ["No relevant textual documents found."]
+            text_content = "No relevant textual documents found."
             
-        retrieved_text = "\n".join(text_content)
+        images_b64 = []
+        for path in retrieved_data["images"]: 
+            with open(path, "rb") as img_f: # check if file exists?
+                b64 = base64.b64encode(img_f.read()).decode('utf-8')
+                images_b64.append(b64)
+                
+        retrieved_text = "".join(text_content)
+        retrieved_images = images_b64
 
-        retrieved_images = retrieved_data.get("images")
-        
-        #debug 2
-        print(retrieved_images)
-        
         initial_state = {
             "messages": [HumanMessage(content=prompt)],
             "user_question": prompt,  
@@ -259,3 +258,5 @@ Synthesize: Summarize the most accurate and reliable information based on the ev
 Conclude: Provide a final, well-reasoned answer to the question or task. Your conclusion should reflect the consensus (if one exists) or the most credible and well-supported answer.
 Based on the provided answers from all agents, summarize the final decision clearly. You should only return the final answer in this dictionary format: {"Answer": <Your final answer here>}. Don't give other information.
 """
+
+
