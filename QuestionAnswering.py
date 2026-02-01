@@ -1,221 +1,275 @@
-from langchain.tools import tool
-#from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
-from langgraph.graph import StateGraph, MessagesState, START, END
-from langchain.messages import AnyMessage, HumanMessage, AIMessage
+from langgraph.graph import StateGraph, START, END
+from langchain.messages import HumanMessage, AIMessage, SystemMessage
 from typing_extensions import TypedDict, Annotated
 import operator
-from langchain.messages import SystemMessage
-from langchain.messages import ToolMessage
-from typing import Literal
-from langchain_core.language_models import BaseChatModel
 import json
 import re
-import base64
 from RAG import RAGEngine
+from langchain_core.language_models import BaseChatModel
+
+# ============================================================
+# STATE DEFINITION
+# ============================================================
 
 class QuestionAnsweringGraphState(TypedDict):
-    messages: Annotated[list[str], operator.add]
-    # FIX: Use Annotated with operator.add to handle parallel updates
+    messages: Annotated[list, operator.add]
     llm_calls: Annotated[int, operator.add]
 
-    user_question:str
-    retrieved_text:str
-    retrieved_images:list[str] 
+    user_question: str
+    retrieved_text_chunks: list[str]
+    retrieved_images: list[str]
 
-    ga_output:str
-    ca_output:str
-    ta_output:str
-    ia_output:str
-    sa_output:str
+    # ---- Hierarchical summaries ----
+    text_chunk_summaries: list[str]          # A (Level 1)
+    image_summaries: list[str]               # A (Level 1)
 
-class QuestionAnsweringModule():
-    def __init__(self, retriever:RAGEngine, model:BaseChatModel = ChatOllama(model="qwen3-vl:4b", temperature=0)):
-        self.__retriever = retriever
-        self.__model = model
-        self.__workflow_builder = StateGraph(QuestionAnsweringGraphState)
+    text_summary: str                        # A (Level 2)
+    image_summary: str                       # A (Level 2)
 
-        def clean_json_string(s):
-            s = re.sub(r'```json\s*', '', s)
-            s = re.sub(r'```', '', s)
+    cross_modal_analysis: dict               # D
+
+    final_summary: dict                     # A (Level 3)
+
+
+# ============================================================
+# MODULE
+# ============================================================
+
+class QuestionAnsweringModule:
+
+    def __init__(
+        self,
+        retriever: RAGEngine,
+        model: BaseChatModel = ChatOllama(model="qwen3-vl:4b", temperature=0)
+    ):
+        self.retriever = retriever
+        self.model = model
+        self.workflow = StateGraph(QuestionAnsweringGraphState)
+
+        # ---------------- Utility ----------------
+
+        def clean_json(s: str):
+            s = re.sub(r"```json|```", "", s)
             return s.strip()
-        
-        def _general_agent(state:dict):
-            agent_answer:AIMessage = self.__model.invoke(
-                [
+
+        # ============================================================
+        # A1) MICRO TEXT SUMMARIZATION (PER CHUNK)
+        # ============================================================
+
+        def text_micro_summarizer(state):
+            summaries = []
+
+            for chunk in state["retrieved_text_chunks"]:
+                resp = self.model.invoke([
                     SystemMessage(
-                        content=GA_SYSTEM_PROMPT
+                        content="""
+                        Summarize the following text chunk.
+                        Extract only factual information relevant to the question.
+                        Keep it concise.
+                        """
                     ),
                     HumanMessage(
                         content=f"""
-                            Textual Content: {state.get("retrieved_text", "No text provided")}
-                            Question: {state.get("user_question", "")}
+                        Question: {state["user_question"]}
+                        Text Chunk: {chunk}
                         """
                     )
-                ]
-            )
-            
-            # FIX: Return only the increment (1), not the total
+                ])
+                summaries.append(resp.content)
+
             return {
-                "messages": [agent_answer],
-                "llm_calls": 1,
-                "ga_output": agent_answer.content
+                "text_chunk_summaries": summaries,
+                "llm_calls": len(summaries)
             }
 
-        def _critical_agent(state:dict):
-            agent_answer:AIMessage = self.__model.invoke(
-                [
+        # ============================================================
+        # A1) MICRO IMAGE SUMMARIZATION (PER IMAGE)
+        # ============================================================
+
+        def image_micro_summarizer(state):
+            summaries = []
+
+            for img in state["retrieved_images"]:
+                resp = self.model.invoke([
                     SystemMessage(
-                        content=CA_SYSTEM_PROMPT
+                        content="""
+                        Analyze the image and extract factual information.
+                        Focus on diagrams, labels, relationships, and visual structure.
+                        """
                     ),
                     HumanMessage(
                         content=f"""
-                            Question: {state.get("user_question", "")}
-                            Preliminary Answer: {state.get("ga_output"), ""}
-                            Textual Content: {state.get("retrieved_text", "No text provided")}
+                        Question: {state["user_question"]}
+                        Image (base64): {img}
                         """
                     )
-                ]
-            )
-                    
-            # FIX: Return only the increment (1)
+                ])
+                summaries.append(resp.content)
+
             return {
-                "messages": [agent_answer],
-                "llm_calls": 1,
-                "ca_output": agent_answer.content
+                "image_summaries": summaries,
+                "llm_calls": len(summaries)
             }
 
-        def _text_agent(state:dict):
-            critical_agent_output = json.loads(clean_json_string(state.get("ca_output", "")))
-            critical_text_info = critical_agent_output.get("text")
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                        content=TA_SYSTEM_PROMPT
-                    ),
-                    HumanMessage(
-                        content=f"""
-                            Question: {state.get("user_question", "")}
-                            Critical Text Information: {critical_text_info}
-                            Textual Content: {state.get("retrieved_text", "No text provided")}
-                        """
-                    )
-                ]
-            )
-            
-            # FIX: Return only the increment (1)
-            return {
-                "messages": [agent_answer],
-                "llm_calls": 1,
-                "ta_output": agent_answer.content
-            }
+        # ============================================================
+        # A2 + B) MODALITY-LEVEL SUMMARIZATION (STRUCTURED)
+        # ============================================================
 
-        def _image_agent(state:dict):
-            # The critical agents returns a json
-            critical_agent_output = json.loads(clean_json_string(state.get("ca_output", "")))
-            critical_image_info = critical_agent_output.get("image")
-            
-            msg_content = [
-                {"type": "text", "text": f"Textual Content: {state.get('retrieved_text')}\nQuestion: {state.get('user_question')}"}
-            ]
-            if state.get("retrieved_images"):
-                for img_b64 in state.get("retrieved_images"):
-                    msg_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+        def modality_text_summary(state):
+            resp = self.model.invoke([
+                SystemMessage(
+                    content="""
+                    Merge the following text chunk summaries.
+                    Remove redundancy.
+                    Return a JSON with key factual points.
+                    """
+                ),
+                HumanMessage(
+                    content=json.dumps({
+                        "question": state["user_question"],
+                        "chunk_summaries": state["text_chunk_summaries"]
                     })
-                    
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                        content=IA_SYSTEM_PROMPT
-                    ),
-                    HumanMessage(
-                        content=f"""
-                            Question: {state.get("user_question", "")}
-                            Critical Image Information: {critical_image_info}
-                            Image Content: {state.get("retrieved_images", "No images provided")}
-                        """
-                    )
-                ]
-            )
+                )
+            ])
 
             return {
-                "messages": [agent_answer],
-                "llm_calls": 1,
-                "ia_output": agent_answer.content
+                "text_summary": resp.content,
+                "llm_calls": 1
             }
 
-        def _summarizing_agent(state:dict):
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                        content=SA_SYSTEM_PROMPT
-                    ),
-                    HumanMessage(
-                        content=f"""
-                            Question: {state.get("user_question", "")}
-                            Preliminary Answer: {state.get("ga_output", "")}
-                            Text Agent Answer: {state.get("ta_output", "")}
-                        """
-                    )
-                ]
-            )
-            
-            # FIX: Return only the increment (1)
+        def modality_image_summary(state):
+            resp = self.model.invoke([
+                SystemMessage(
+                    content="""
+                    Merge the following image summaries.
+                    Focus on visual-only insights.
+                    Return a JSON with key visual facts.
+                    """
+                ),
+                HumanMessage(
+                    content=json.dumps({
+                        "question": state["user_question"],
+                        "image_summaries": state["image_summaries"]
+                    })
+                )
+            ])
+
             return {
-                "messages": [agent_answer],
-                "llm_calls": 1,
-                "sa_output": agent_answer.content
+                "image_summary": resp.content,
+                "llm_calls": 1
             }
-        
-        self.__workflow_builder.add_node("general_agent", _general_agent)
-        self.__workflow_builder.add_node("critical_agent", _critical_agent)
-        self.__workflow_builder.add_node("text_agent", _text_agent)
-        self.__workflow_builder.add_node("image_agent", _image_agent)
-        self.__workflow_builder.add_node("summarizing_agent", _summarizing_agent)
 
-        self.__workflow_builder.add_edge(START, "general_agent")
-        self.__workflow_builder.add_edge("general_agent", "critical_agent")
-        self.__workflow_builder.add_edge("critical_agent", "text_agent")
-        self.__workflow_builder.add_edge("critical_agent", "image_agent")
-        self.__workflow_builder.add_edge("text_agent", "summarizing_agent")
-        self.__workflow_builder.add_edge("image_agent", "summarizing_agent")
-        self.__workflow_builder.add_edge("summarizing_agent", END)
-        
-        self.__workflow = self.__workflow_builder.compile()
+        # ============================================================
+        # D) CROSS-MODAL ANALYSIS
+        # ============================================================
 
-    def invoke_workflow(self, prompt:str)->str:
-        # Query RAG (Ensure RAG.py is also fixed to handle k_image=0 as per previous step)
-        retrieved_data = self.__retriever.query(prompt, k_text=5, k_image=5)
-        
-        text_content = retrieved_data.get("text")
-        #debug 1
-        print(text_content)
-        if not text_content:
-            text_content = ["No relevant textual documents found."]
-            
-        retrieved_text = "\n".join(text_content)
+        def cross_modal_reasoning(state):
+            resp = self.model.invoke([
+                SystemMessage(
+                    content="""
+                    Compare text and image summaries.
+                    Identify:
+                    - Overlapping facts
+                    - Text-only facts
+                    - Image-only facts
+                    - Any contradictions
+                    Return structured JSON.
+                    """
+                ),
+                HumanMessage(
+                    content=json.dumps({
+                        "text_summary": state["text_summary"],
+                        "image_summary": state["image_summary"]
+                    })
+                )
+            ])
 
-        retrieved_images = retrieved_data.get("images")
-        
-        #debug 2
-        print(retrieved_images)
-        
-        initial_state = {
-            "messages": [HumanMessage(content=prompt)],
-            "user_question": prompt,  
-            "retrieved_text": retrieved_text, 
-            "retrieved_images": retrieved_images,
-            "llm_calls": 0
+            return {
+                "cross_modal_analysis": json.loads(clean_json(resp.content)),
+                "llm_calls": 1
+            }
+
+        # ============================================================
+        # A3 + B + C) FINAL MULTIMODAL SUMMARIZER
+        # ============================================================
+
+        def final_summarizer(state):
+            resp = self.model.invoke([
+                SystemMessage(
+                    content="""
+                    You are a multimodal summarization agent.
+
+                    Step 1: Identify the most important facts.
+                    Step 2: Resolve overlaps and contradictions.
+                    Step 3: Produce a concise, accurate final summary.
+
+                    Return JSON ONLY in this format:
+                    {
+                      "summary": "...",
+                      "text_based_points": [...],
+                      "image_based_points": [...],
+                      "cross_modal_insights": [...]
+                    }
+                    """
+                ),
+                HumanMessage(
+                    content=json.dumps({
+                        "question": state["user_question"],
+                        "text_summary": state["text_summary"],
+                        "image_summary": state["image_summary"],
+                        "cross_modal_analysis": state["cross_modal_analysis"]
+                    })
+                )
+            ])
+
+            return {
+                "final_summary": json.loads(clean_json(resp.content)),
+                "llm_calls": 1
+            }
+
+        # ============================================================
+        # GRAPH WIRING
+        # ============================================================
+
+        self.workflow.add_node("text_micro", text_micro_summarizer)
+        self.workflow.add_node("image_micro", image_micro_summarizer)
+        self.workflow.add_node("text_summary", modality_text_summary)
+        self.workflow.add_node("image_summary", modality_image_summary)
+        self.workflow.add_node("cross_modal", cross_modal_reasoning)
+        self.workflow.add_node("final", final_summarizer)
+
+        self.workflow.add_edge(START, "text_micro")
+        self.workflow.add_edge(START, "image_micro")
+
+        self.workflow.add_edge("text_micro", "text_summary")
+        self.workflow.add_edge("image_micro", "image_summary")
+
+        self.workflow.add_edge("text_summary", "cross_modal")
+        self.workflow.add_edge("image_summary", "cross_modal")
+
+        self.workflow.add_edge("cross_modal", "final")
+        self.workflow.add_edge("final", END)
+
+        self.app = self.workflow.compile()
+
+    # ============================================================
+    # INVOKE
+    # ============================================================
+
+    def invoke(self, question: str):
+        retrieved = self.retriever.query(question, k_text=6, k_image=4)
+
+        state = {
+            "messages": [],
+            "llm_calls": 0,
+            "user_question": question,
+            "retrieved_text_chunks": retrieved["text"],
+            "retrieved_images": retrieved["images"]
         }
-        final_state = self.__workflow.invoke(initial_state)
-        return final_state.get("sa_output", "")
-    
-    def visualize_workflow(self):
-        from IPython.display import Image, display
-        display(Image(self.__workflow.get_graph().draw_mermaid_png()))
-        
+
+        result = self.app.invoke(state)
+        return result["final_summary"]
 
 GA_SYSTEM_PROMPT = """  
 You are an advanced agent capable of analyzing both text and images. Your task is to use both the textual and visual information provided to answer the user’s question accurately.
@@ -251,11 +305,50 @@ Remeber you can only get the information from the images provided, so maybe othe
 """
 
 SA_SYSTEM_PROMPT = """
-You are tasked with summarizing and evaluating the collective responses provided by multiple agents. You have access to the following information:
-Answers: The individual answers from all agents.
-Using this information, perform the following tasks:
-Analyze: Evaluate the quality, consistency, and relevance of each answer. Identify commonalities, discrepancies, or gaps in reasoning.
-Synthesize: Summarize the most accurate and reliable information based on the evidence provided by the agents and their discussions.
-Conclude: Provide a final, well-reasoned answer to the question or task. Your conclusion should reflect the consensus (if one exists) or the most credible and well-supported answer.
-Based on the provided answers from all agents, summarize the final decision clearly. You should only return the final answer in this dictionary format: {"Answer": <Your final answer here>}. Don't give other information.
+You are tasked with summarizing and evaluating the collective responses provided by multiple agents.
+
+You have access to:
+- Answers: the individual answers from all agents.
+
+Your task consists of the following stages:
+
+--- ANALYSIS STAGE ---
+Analyze the provided answers with the following constraints:
+
+(A) Redundancy & Semantic Clustering:
+- Identify semantically similar or overlapping ideas across different agents.
+- Merge repeated ideas into a single unified point.
+- Avoid repeating the same concept using different wording.
+
+(B) Structure-Aware Reasoning:
+- Identify the logical role of each idea (e.g., definition, argument, evidence, limitation, conclusion).
+- Preserve a coherent structure when forming the final reasoning.
+
+(C) Consistency & Quality Evaluation:
+- Evaluate each answer for correctness, relevance, and internal consistency.
+- Identify contradictions, gaps, or weak reasoning among agents.
+- Prefer ideas supported by multiple agents or stronger reasoning.
+
+(D) Faithfulness Constraint:
+- Use ONLY information explicitly stated in the agents’ answers.
+- Do NOT introduce new facts, assumptions, or external knowledge.
+- If important information is missing or agents disagree, explicitly acknowledge uncertainty.
+
+--- SYNTHESIS STAGE ---
+Synthesize the most accurate and reliable information by:
+- Selecting the strongest merged ideas after clustering.
+- Resolving conflicts by favoring better-supported or clearer reasoning.
+- Discarding redundant, weak, or unsupported claims.
+
+--- CONCLUSION STAGE ---
+Produce a final answer that:
+- Reflects agent consensus when it exists.
+- Otherwise, presents the most credible and well-supported conclusion.
+- Is concise, non-redundant, and clearly reasoned.
+
+--- OUTPUT FORMAT ---
+Return ONLY the final result in the following JSON format:
+{"Answer": "<final synthesized answer>"}
+
+Do not include explanations, analysis steps, or any additional text.
 """
