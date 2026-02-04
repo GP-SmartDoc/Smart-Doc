@@ -1,3 +1,24 @@
+# Python cache
+__pycache__/
+
+# Temporary files
+*.pyc
+*.pyo
+*.pyd
+
+# Models folder
 models/
-chromadb_storage/
+
+# Blob storage folder
 blob_storage/
+
+# chromadb folder
+chromadb_storage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Other temp/log folders
+logs/
+temp/
