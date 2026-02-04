@@ -12,7 +12,7 @@ class RAGEngine:
     """
     GP-ready RAG Engine:
     - Parent–child text splitting
-    - YOLO-based region detection (class-agnostic but ignoring text)
+    - YOLO-based region detection (ignores text)
     - Geometry-based filtering only
     - MPNet embeddings for semantic search
     """
@@ -23,18 +23,11 @@ class RAGEngine:
         os.makedirs(blob_storage_path, exist_ok=True)
 
         # ---------------- EMBEDDERS ----------------
-        # Download all-mpnet-base-v2 locally
-        local_dir = "./models/all-mpnet-base-v2"
-        snapshot_download(
-            repo_id="sentence-transformers/all-mpnet-base-v2",
-            local_dir=local_dir,
-            local_dir_use_symlinks=False
-        )
-        print("Downloaded all-mpnet-base-v2 to:", local_dir)
-
+        mpnet_dir = "./models/all-mpnet-base-v2"
         self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-mpnet-base-v2"  # download locally
+            model_name=mpnet_dir
         )
+
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
             model_name="ViT-B-32",
             device="cpu"  # change to "cuda" if GPU available
@@ -63,13 +56,15 @@ class RAGEngine:
         self.__ignored_layout_classes = {
             "Text", "Title", "Section-header", "Page-header", "Page-footer", "List-item"
         }
-        print("YOLO layout model classes:", self.__yolo.model.names)
 
     # =========================================================
     # PDF INGESTION
     # =========================================================
     def add_pdf(self, file_path):
         filename = os.path.basename(file_path)
+        # Skip if already indexed
+       
+
         loader = PyMuPDFLoader(file_path)
         docs = loader.load()
         pdf = fitz.open(file_path)

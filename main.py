@@ -11,41 +11,35 @@ def main():
     # -------------------------
     # run first time only: ingest files
     # -------------------------
-    if not os.listdir(db_path):  # Only ingest if DB folder is empty
-        print("First run: adding PDFs/images to ChromaDB...")
+   
+    # print("First run: adding PDFs/images to ChromaDB...")
 
-        # 3. Add different file types:
-        rag.add_pdf("pdfs\\test2.pdf")
-        # rag.add_pdf("pdfs\\test1.pdf")
-        # rag.add_pdf("pdfs\\test3.pdf")
-        # rag.add_pdf("pdfs\\test4.pdf")
-        # rag.add_pdf("pdfs\\test5.pdf")
+    # # 3. Add different file types:
+    # rag.add_pdf("pdfs\\test2.pdf")
+    # rag.add_pdf("pdfs\\test1.pdf")
+    # rag.add_pdf("pdfs\\test3.pdf")
+    # rag.add_pdf("pdfs\\test4.pdf")
+    # rag.add_pdf("pdfs\\test5.pdf")
 
-        # Images (optional)
-        # rag.add_image("Images\\bank.png")
-        # rag.add_image("Images\\bear.png")
-        # rag.add_image("Images\\cat.png")
-        # rag.add_image("Images\\cath.png")
-        # rag.add_image("Images\\dog.png")
-        # rag.add_image("Images\\mall.png")
-        # rag.add_image("Images\\market.png")
-        # rag.add_image("Images\\parrot.png")
-        # rag.add_image("Images\\rat.png")
-        # rag.add_image("Images\\snake.png")
-        # rag.add_image("Images\\stadium.png")
-
-        # Persist the database after ingestion
-        client.persist()
-        print("Database persisted. First-time ingestion complete.\n")
-    else:
-        print("Database already exists. Skipping ingestion.\n")
+    # # Images (optional)
+    # rag.add_image("Images\\bank.png")
+    # rag.add_image("Images\\bear.png")
+    # rag.add_image("Images\\cat.png")
+    # rag.add_image("Images\\cath.png")
+    # rag.add_image("Images\\dog.png")
+    # rag.add_image("Images\\mall.png")
+    # rag.add_image("Images\\market.png")
+    # rag.add_image("Images\\parrot.png")
+    # rag.add_image("Images\\rat.png")
+    # rag.add_image("Images\\snake.png")
+    # rag.add_image("Images\\stadium.png")
 
     # -------------------------
     # Query
     # -------------------------
     # answer:dict = rag.query("what's happening in stage document preprocessing on mdocagent framework?", 1, 1)
     # answer:dict = rag.query("what's stages of pregenie framework?", 1, 1)
-    answer: dict = rag.query("what's architecture of pregenie framework?", 1, 1)
+    answer: dict = rag.query("what's architecture of pregenie framework?", 3, 2)
     # answer:dict = rag.query("mouse", 1, 1)
 
     text: list = answer["text"]
