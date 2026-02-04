@@ -1,4 +1,4 @@
-from RAG2 import RAGEngine
+from RAG import RAGEngine
 import chromadb
 import os  # for checking if database folder is empty
 
@@ -15,7 +15,7 @@ def main():
     # print("First run: adding PDFs/images to ChromaDB...")
 
     # # 3. Add different file types:
-    # rag.add_pdf("pdfs\\test2.pdf")
+    rag.add_pdf("pdfs\\test2.pdf")
     # rag.add_pdf("pdfs\\test1.pdf")
     # rag.add_pdf("pdfs\\test3.pdf")
     # rag.add_pdf("pdfs\\test4.pdf")

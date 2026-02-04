@@ -11,6 +11,4 @@ after create your own environment install that
 
 
 #to download Models
-https://mega.nz/file/52ZDkYpA#i6XlLGJCpVIjcKbypPcRYqSY0RCIqQ_5kj1DbfMga20
-
-move folder models in project folder only after extracted
+run python download.py
