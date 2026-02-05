@@ -1,0 +1,7 @@
+**/blob_storage/
+python/test_data
+python/.env
+**/__pycache__/
+*.py[cod]
+main.py
+
