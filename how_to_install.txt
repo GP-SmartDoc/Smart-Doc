@@ -1,0 +1,14 @@
+#Anaconda prompt
+conda env create -f environment.yml
+
+I'm using python 3.11.9
+
+or
+
+pip install -r requirements.txt
+
+after create your own environment install that 
+
+
+#to download Models
+run python download.py
