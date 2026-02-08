@@ -1,0 +1,455 @@
+As a web developer, you need to make and roll out changes to your
+codebase in an orderly and disciplined fashion. It’s common for security
+vulnerabilities and bugs to creep in over time because of shortcuts taken
+in the face of deadlines. Most security vulnerabilities are introduced not
+through a lack of development knowledge, but because of a lack of atten-
+tion to detail.
+36 Chapter 5
+This chapter focuses on how you should be writing secure code, by
+adhering to the Software Development Life Cycle (SDLC), a fancy phrase for the
+process a development team follows when designing new website features,
+writing code, testing it, and pushing out changes. A chaotic and messy
+SDLC makes it impossible to track the code you’re running and its vulner-
+abilities, which inevitably leads to a buggy, insecure website. However, a
+well-structured SDLC allows you to root out bugs and vulnerabilities early
+in the process to protect your end-product site from attacks.
+We’ll go through five phases of a good SDLC: design and analysis, writ-
+ing code, pre-release testing, the release process, and post-release testing
+and observation. We’ll also briefly talk about securing dependencies, the
+third-party software that we use in our websites
+
+Phase 1: Design and Analysis
+The SDLC doesn’t begin with writing code; it begins with thinking about
+what code you should be writing. We call this first phase the design and
+analysis phase: you analyze the features you need to add and design their
+implementation. At the start of a project, this might consist of sketching
+out brief design aims. But by the time your site is up and running, you
+need to give changes a little more deliberation, because you don’t want
+to break functionality for existing users.
+The most important objective of this phase is identifying the require-
+ments the code is trying to address. Once the development team completes
+the code, everyone should be able to judge whether the new code changes
+properly address those requirements. If you’re writing code for a client,
+this phase means meeting with stakeholders and getting them to agree to
+a list of goals. For in-house development at a company or organization, it
+mostly means developing and documenting a shared vision of whatever
+you’re building.
+Issue-tracking software helps immensely with design and analysis, especially
+when you’re diagnosing and fixing bugs in an existing site. (Issue trackers are
+also known as bug trackers for this reason.) Issue trackers describe individual
+development goals as issues—such as “build a customer checkout page” or
+“fix the spelling mistake on the home page.” Issues are then assigned to indi-
+vidual developers, who can rank their issue by priority, write code to fix them,
+and mark them as complete. Developers can link specific sets of code changes
+for the purpose of fixing a bug or adding a feature described in an issue. For
+large teams, managers can schedule issues with project management software
+for reporting purposes.
+The amount of time you should spend working things out on paper
+before writing code can vary. Teams that write software for firmware devices
+or critical systems like nuclear reactors unsurprisingly spend a lot of time in
+the design phase, because they rarely get a chance to fix code after deploying
+it. Web developers tend to move more quickly.
+
+Phase 2: Writing Code
+Once you have completed design and analysis, you can move on to the
+second phase of the SDLC: writing code. You can write code with a lot
+of tools, but you should always keep any code that’s not a one-off script
+in source control software (also known as version control), which allows you
+to store a backup copy of your codebase, browse previous versions of the
+codebase, track changes, and annotate the code changes you’re making.
+You can share changes with the rest of your team by pushing code changes
+to the source repository, usually via command line tools or plug-ins to other
+development tools, before releasing them to the world. Pushing your code
+changes to the centralized repository makes them available to other team
+members for review. Releasing your changes means deploying them to your
+production website—the website that your real users will see.
+Using source control also allows you to browse the version of the code-
+base currently running on the production site, which is key to diagnosing
+vulnerabilities and investigating and resolving security issues found post-
+release. When a development team identifies and resolves a security issue,
+they should look over the code changes that introduced the vulnerability
+and check whether the changes affected any other parts of the site.
+Source control is the number one tool all development teams need to
+use. (Even a development team of one!) Large companies usually run their
+own source control servers, while smaller companies and open source devel-
+opers typically use a third-party hosted service.
+Distributed vs. Centralized Version Control
+A variety of source control software exists, each with different syntax and
+features. Of the tools currently available, the most popular is Git, a tool
+originally created by Linus Torvalds, the founder of Linux, to help orga-
+nize the development of the Linux kernel. Git is a distributed version control
+system, which means that every copy of the code kept under Git is a fully
+fledged repository. When a new developer pulls (downloads) a local copy of
+the code from the team repository for the first time, they get not only the
+latest version of the codebase, but also a complete history of changes to the
+codebase.
+Distributed source control tools track the changes the developer makes,
+and transmit only those changes when the developer pushes the code. This
+model of source control differs from older software, which implements a
+centralized server from which developers download and to which they upload
+whole files.
+Git has become popular in no small part because of GitHub, a website
+that makes it straightforward to set up an online Git repository and invite
+team members. Users can view code stored in GitHub in the browser and
+can easily document it in the Markdown language. GitHub also includes its
+own issue tracker and tools to manage competing code changes.
+
+Branching and Merging Code
+Source control software allows you to be precise about which code changes
+get pushed out with each update to your website. Typically, code releases are
+managed using branches. A branch is a logical copy of the codebase, stored
+either within the source control server or a developer’s local repository.
+Developers can make local changes to their own branch without affecting the
+master codebase, and then merge the branch back into the master codebase
+when they’ve completed whatever feature or bug fix they were working on.
+N O T E Larger development teams may have more-elaborate branching schemes. Source con-
+trol software allows you to create branches off of branches off of branches ad infini-
+tum, since branching is a cheap operation. A large team may have several developers
+contribute to the same feature branch for complex code updates.
+Before a release takes place, several developers might merge different
+branches into the master codebase. If they’ve been making different edits
+to the same files, the source control software automatically attempts to
+merge those changes. If the differing changes can’t be merged automati-
+cally, a merge conflict occurs, which requires the development team to manu-
+ally complete the merge process, choosing line by line how competing code
+changes should be applied. Resolving merge conflicts is the bane of a devel-
+oper’s life: it’s extra work that needs doing after you think you’ve already
+finished an issue. And usually it’s because Dave decided to change the for-
+matting in several thousand Python files. (Thanks, Dave.)
+Merge time is an excellent opportunity to do code reviews, in which one
+or more team members look over the code changes and give feedback.
+A great way to catch potential security vulnerabilities is to follow the four
+eyes principle, which requires two separate people to see every code change
+before a release. Often, a fresh set of eyes looking over the code can see
+problems not anticipated by the original author. (Cyclopes are terrible cod-
+ers, so it’s recommended that you double up on their reviews.)
+Git-based tools can formalize code reviews by using pull requests. A
+pull request is a developer’s request to merge code into the master codebase,
+which allows tools like GitHub to ensure that another developer approves
+changes before the merge occurs. (Source control software often makes
+the approval of pull requests contingent on all tests passing in a continuous
+integration system, which we’ll discuss in the following section.)
+
+Phase 3: Pre-Release Testing
+The third stage of the SDLC is testing. You should release code only after
+you’ve tested it thoroughly to catch any potential bugs and ensure that it
+works correctly. A good testing strategy is key to catching software defects,
+especially security vulnerabilities, before users experience them or hackers
+can exploit them. Anyone making code changes should manually test the
+site’s functionality before merging or releasing code. This is a basic level of
+diligence you should expect from all members of your team.
+
+How Programmers Work 39
+Catching software defects earlier in the development life cycle saves a
+lot of time and effort, so you should complement your manual testing with
+unit testing. Unit tests are small scripts within the codebase that make basic
+assertions about how the code operates by executing various parts of the
+codebase and testing the output. You should run unit tests as part of your
+build process, and write unit tests for particularly sensitive or frequently
+changing areas of your code.
+Keep unit tests simple, so that they test isolated functions of the code.
+Overly complex unit tests that test multiple pieces of functionality at once
+are brittle, prone to breaking as code changes are made. A good unit test,
+for instance, might assert that only authenticated users can view certain
+areas of the website, or that passwords have to meet a minimum complexity
+requirement. Good unit tests additionally act as a form of documentation,
+illustrating how the code should operate if implemented correctly.
+Coverage and Continuous Integration
+When you run a unit test, it calls functions in your main codebase. When
+you run all your unit tests, the percentage of your codebase that they exe-
+cute is called your coverage. Although aiming for 100 percent test coverage is
+laudable, it’s often impractical, so be careful in choosing which parts of the
+codebase you write unit tests for. (Besides, complete test coverage doesn’t
+guarantee correct code; just because every code path is executed doesn’t
+mean all scenarios are covered.) Writing good unit tests is a matter of judg-
+ment and should be part of a larger risk-assessment strategy. Here’s a good
+rule of thumb: when you discover a bug, write a unit test asserting the cor-
+rect behavior, and then fix the bug. This prevents the issue from reoccurring.
+Once you have sufficient test coverage, you should set up a continuous
+integration server. A continuous integration server connects to your source
+control repository and, whenever code changes are made, checks out a
+fresh version of the code and runs the build process while executing your
+unit tests. If the build process fails—perhaps because the unit tests start
+failing—your development team receives an alert. Continuous integration
+ensures that you spot software defects early and address them promptly.
+Test Environments
+Once you’ve completed all code changes for a release, you should deploy
+them to a test environment for final testing. A test environment (often called
+a staging, pre-production, or quality assurance environment) should be a fully
+operational copy of the website, run on dedicated servers. A test environ-
+ment is essential for detecting software defects such as security vulner-
+abilities before a release happens. Large development teams often employ
+quality assurance (QA) staff dedicated to testing software in such environ-
+ments. If you’re integrating different sets of code changes together, this is
+sometimes called integration testing.
+A good test environment should resemble the production environment
+as closely as possible, to ensure that the tests are meaningful. You should
+run your test environment on the same server and database technologies, differing only in the configuration and the version of the code running on
+it. (You should still apply common sense. Your test environment shouldn’t
+be able to send email to real users, for instance, so impose deliberate limita-
+tions to your test environments as needed.)
+This process is analogous to a cast and crew of a theatrical play under-
+taking a dress rehearsal before performing in front of a live audience for
+the first time. They put on the play in full costume before a small test audi-
+ence. This allows them to work out the final kinks in their performance in
+a low-stakes environment, where every detail resembles the real opening-
+night performance as closely as possible.
+Test environments are a key part of secure releases, but they also pose
+security risks of their own if not properly managed. Test and production
+environments need to be properly segregated at the network layer, meaning
+that communication between the two environments is impossible. You can’t
+give attackers the chance to compromise your website by allowing them to
+hop across the network from an unsecured test environment into your pro-
+duction environment.
+Test environments usually have their own database, which requires
+realistic-looking test data in order to allow thorough testing of the site’s
+functionality. A common approach to generating good test data is copying
+over data from production systems. If you do this, take special care to scrub
+this kind of data-copy of sensitive information, including names, payment
+details, and passwords. Numerous high-profile data leaks in recent years
+have been caused by attackers stumbling across improperly scrubbed data
+in a test environment.
+Phase 4: The Release Process
+Writing code for a website isn’t much use if you don’t ever push it out, so
+let’s talk about the fourth phase of the SDLC: the release process. A release
+process for websites involves taking code from source control, copying it
+onto a web server, and (typically) restarting the web server process. How
+you achieve this varies according to where you host your site and what
+technology you use. Whatever your approach, your release process needs
+to be reliable, reproducible, and revertible.
+A reliable release process means that you can guarantee what code,
+dependencies, resources, and configuration files get deployed during the
+release. If your release process is unreliable, you may not be running the
+version of the code you think you’re running, which is a serious security
+risk. To ensure that your website deploys files reliably, release scripts typi-
+cally use checksums—digital “fingerprints” that ensure that the files copied
+onto the server are identical to those held in source control.
+A reproducible release process is one that you can rerun with the same
+results, in different environments, or with different versions of the code.
+Reproducibility means less room for manual error during a release. If your
+release process requires an administrator to perfectly perform 24 steps in How Programmers Work 41
+the correct order, you can expect them to make mistakes. Write scripts and
+automate your release process as much as possible! A reproducible process
+is also essential for setting up good test environments.
+A revertible release process allows you to roll back releases. Sometimes
+unexpected contingencies make you want to “undo” a recent release and
+revert to a prior version of the code. This process should be as seamless as
+possible. Partially rolled-back code is a disaster waiting to happen, because
+you may be leaving an insecure configuration in place, or software depen-
+dencies with known vulnerabilities. Whatever release process you choose,
+you need to be able to reliably revert to a previous version of the codebase
+with minimal fuss.
+Options for Standardized Deployment During Releases
+Hosting companies have invented Platform as a Service (PaaS) solutions that
+make releasing code easy and reliable. If “in the cloud” refers to running
+code on other people’s servers, using an “as a service” offering refers to run-
+ning code on other people’s servers, with some helpful automation and an
+administrative website. (Hosting companies have a track record of invent-
+ing horrible marketing acronyms.)
+Microsoft Azure, Amazon Web Services Elastic Beanstalk, Google App
+Engine, and Heroku are all PaaS providers that allow developers to release
+code with a single command line call. The platform takes care of almost
+everything else required during the release process: setting up virtualized
+servers, installing the operating system and virtual machines, running your
+build process (more on this later), loading dependencies, deploying the
+code to disk, and restarting the web server process. You can monitor and
+roll back releases in a web console or from the command line, and the plat-
+form performs various safety checks to ensure your code deploys cleanly.
+Using a PaaS-based release process minimizes downtime for your site,
+ensures a clean deployment of code, and produces a full audit trail.
+PaaS solutions impose limitations. In exchange for this convenience
+and reliability, they support only certain programming languages and oper-
+ating systems. They allow a limited amount of server configuration, and
+they don’t support complex network layouts. As a result, it can sometimes
+be difficult to retrofit legacy applications for deployment on this kind of
+platform.
+Infrastructure as a Service and DevOps
+If you’re not using PaaS, because your application is too complex, too old,
+or the cost is too prohibitive, you’ll typically deploy your code to individual
+servers. These might be self-hosted, hosted in a data center, or hosted on
+virtualized servers in an Infrastructure as a Service (IaaS) solution such as
+Amazon Elastic Compute Cloud (EC2). In such a scenario, you’re respon-
+sible for authoring your own release process.
+Historically, companies have employed dedicated systems administra-
+tor staff to design and run the release process. However, the rise of DevOps (short for developer operations) tools has blurred these responsibilities and
+allowed developers more control in the way their code gets deployed.
+DevOps tools (which have a variety of evocative names like Puppet, Chef,
+and Ansible) make it easy to describe standard deployment scenarios and
+modularize release scripts, giving development teams the power to design
+their own deployment strategies. This approach tends to be far more reli-
+able than writing custom release scripts to download and copy files onto
+servers. DevOps tools make it easy to follow best practices because most
+deployment scenarios are covered by existing “recipes” or scripts.
+Containerization
+Another approach to standardizing deployment is using containerization.
+Containerization technologies such as Docker allow you to create configu-
+ration scripts known as images that describe which operating system, disk
+layout, and third-party software a server should use, and which web appli-
+cation you should deploy on top of the software stack. You deploy images
+to a container that abstracts various functions of the underlying operating
+system to allow consistent deployment; everything required specifically for
+the release is described in the image, and the container is a completely
+generic component.
+You can deploy Docker images to real or virtualized servers in a repro-
+ducible manner, making for a reliable release process. Developers testing
+their code locally can use the same exact Docker image as the production
+site, resulting in fewer surprises when the code is released for real.
+Containerization is a relatively new technology, but it promises to
+make deployment of complex applications more reliable and standard-
+ized. A host of associated technologies (for example, Docker Swarm and
+Kubernetes) allow complex, multiserver network configurations to be
+described in machine-readable configuration files. This makes rebuild-
+ing whole environments much more straightforward. A team could, for
+instance, easily start up a whole new test environment with multiple web
+servers and a database, since these individual services and the way they
+communicate with each other would be described in a configuration file
+that the hosting service can understand.
+The Build Process
+Most codebases have a build process, invoked from the command line or
+development tools, that takes the static code and prepares it for deploy-
+ment. Languages such as Java and C# compile source code into a deploy-
+able binary format during the build process, while languages that use
+package managers download and validate third-party code, also known
+as dependencies, when they run the build process.
+Build processes for websites often preprocess client-side assets ready
+for deployment. Many developers use languages such as TypeScript and
+CoffeeScript that they need to compile into JavaScript by the build process.
+Whether JavaScript is coded by hand or generated, build processes usually minify, or obfuscate, JavaScript files in order to generate a compressed, less
+readable, but functionally equivalent version of each JavaScript file that will
+load more quickly in the browser.
+Styling information for websites is typically held in CSS files, as dis-
+cussed in Chapter 3. Managing CSS files for large websites can be a chore
+(because styling information is often duplicated in different places and
+needs to be updated in sync). Web developers often use CSS pre-processors
+such as Sass and SCSS—languages designed to make stylesheets more man-
+ageable, which need to be preprocessed into CSS files at build time.
+Each programming language has a preferred build tool that your
+development team should be proficient with. You should run the build
+process locally before checking any code into source control, so you can
+be sure the process works before rerunning it during the release process.
+Use a continuous integration server, as mentioned previously, to make
+sure this happens.
+Database Migration Scripts
+Adding new features to a website often requires new database tables
+or updates to existing tables. Databases store data that needs to persist
+between releases, so you can’t simply wipe down and install a new data-
+base with each release. You need to create and then run database migra-
+tion scripts against the database as part of your release process to update
+your database structures before deploying your code; and undo the scripts
+if you roll back the code.
+Some technologies (for example, Ruby on Rails) allow you to run migra-
+tion scripts as part of the build process. If you can’t run them as part of the
+build process, you should keep the scripts under source control, and then
+run them with temporarily elevated permissions on the database during
+the release window. In some companies, especially large and complex data-
+bases often have dedicated database administrators (DBAs) who manage this
+process and grumpily act as gatekeepers to their beloved datastores.
+If staff members are able to change database structures outside a
+release, that’s a security risk. We’ll discuss various ways to lock down per-
+missions in Chapter 11.
+Phase 5: Post-Release Testing and Observation
+Once you’ve deployed your code, you should perform post-release testing to
+ensure that you’ve deployed it correctly, and that your assumptions about
+the way the code would execute in production are correct. Theoretically,
+this post-release testing (often called smoke testing) can be pretty cursory if
+you have a good test environment and a reliable release process. Nevertheless,
+it’s a good idea to pay attention to your gut instincts and be risk-averse when
+deciding how much testing to perform at each stage of the SDLC. There’s
+a saying that goes, “Continue testing until fear turns into boredom.” It cap-
+tures the appropriate sentiment.
+44 Chapter 5
+Penetration Testing
+Security professionals and ethical hackers often perform penetration testing,
+which tests for security vulnerabilities by externally probing a website.
+Penetration testing can be useful for both pre-release and post-release
+testing. Additionally, the development team can employ sophisticated
+automated penetration testing tools that test websites for common security
+vulnerabilities by analyzing various URLs and attempting to craft malicious
+HTTP requests. Penetration testing can be expensive and time-consuming,
+but it’s much, much cheaper than getting hacked, so strongly consider add-
+ing it your testing procedures.
+Monitoring, Logging, and Error Reporting
+Once you’ve released your code, your production environment needs to
+be observable at runtime. This helps administrators spot unusual and
+potentially malicious behavior and diagnose issues as they occur. Post-
+release observation should happen in the form of three activities: logging,
+monitoring, and error reporting.
+Logging, the practice of having code write to a log file as the software
+application performs actions, helps administrators see what a web server
+is doing at any given time. Your code should log every HTTP request (with
+a timestamp, URL, and the HTTP response code), as well as significant
+actions performed by users (for example, authentication and password-reset
+requests) and the site itself (for example, sending email and calling APIs).
+You should make logs available to administrators at runtime (either on
+the command line or through a web console) and archive them for later
+reading (in case postmortems are needed). Adding log statements to your
+code helps diagnose problems that occur on your site, but be careful not to
+write sensitive details like passwords and credit card information on your
+logs in case an attacker ever manages to get access to them.
+Monitoring is the practice of measuring response times and other met-
+rics on your website at runtime. Monitoring your web server and database
+helps administrators spot high-load scenarios or degraded performance by
+firing alerts when network speeds slow or database queries take a long time.
+You should pass HTTP and database response times into monitoring soft-
+ware, which should, in turn, raise alerts when server and database response
+times pass certain thresholds. Many cloud platforms have monitoring soft-
+ware built in, so take the time to configure your error conditions and your
+chosen alerting system appropriately.
+You should use error reporting to capture and record unexpected errors
+in the code. You can establish error conditions by either picking them out
+of logs or capturing and recording them in the code itself. You can then
+collate those error conditions in a datastore you make available to adminis-
+trators. Many security intrusions exploit badly handled error conditions, so
+be sure to pay attention to unexpected errors as they occur.
+Third-party services such as Rollbar and Airbrake supply plug-ins that
+allow you to collect errors with a few lines of code, so if you don’t have the time or inclination to set up your own error-reporting system, consider
+using these types of services. Alternatively, log-scraping tools such as Splunk
+allow you to pick out errors from log files and make sense of them
+Dependency Management
+One thing you need to consider alongside the regular SDLC is depen-
+dency management. A curious fact about modern web development is that
+you’ll likely write only a small minority of the code that runs your website.
+Your site will typically depend on operating system code, a programming
+language runtime and associated libraries, possibly a virtual machine,
+and a web server process running third-party code libraries. All of these
+third-party tools that you’ll have to rely on to support your website’s code
+are known as dependencies. (In other words, the software that your software
+depends on to run.)
+Experts in their field write each of these dependencies, saving you the
+burden of having to write your own memory management or low-level TCP
+semantics. These experts also have a strong incentive to stay on top of secu-
+rity vulnerabilities and issue patches as they arise, so you should take advan-
+tage of the resources they provide!
+Using other people’s code requires diligence on your part. A secure
+SDLC should include a process for reviewing third-party libraries and
+determining when patches need to be applied. This often needs to happen
+outside the regular development cycle, since hackers won’t wait until your
+next scheduled release date to begin trying to exploit a security vulner-
+ability. Staying ahead of security advisories and deploying patches for other
+people’s code is just as key as securing the code your team writes. We’ll look
+at how to do this in Chapter 14.
+Summary
+In this chapter, you learned that a well-structured software development life
+cycle allows you to avoid bugs and software vulnerabilities.
+• You should document design goals by using issue-tracking software.
+• You should keep code in source control to make older versions of the code
+available for inspection, and to make it easy to organize code reviews.
+• Before a release, you should test code in a dedicated and isolated test
+environment that resembles your production environment and that
+treats your data with utmost care.
+• You should have a reliable, reproducible, and revertible release pro-
+cess. If you have a scripted build process that generates assets ready for
+deployment, you should run it regularly and with unit tests in a continu-
+ous integration environment to highlight potential problems early in
+the development life cycle. 46 Chapter 5
+• After a release, you should use penetration testing to detect website vul-
+nerabilities before a hacker can make use of them. You should also use
+monitoring, logging, and error reporting to detect and diagnose prob-
+lems with your running site.
+• You should stay ahead of security advisories for any third-party code
+you use, because you may need to deploy patches outside your regular
+release cycle.
+In the next chapter, you’ll (finally!) begin to look at specific software
+vulnerabilities and how to protect against them. You’ll begin by looking at
+one of the biggest threats websites face: malicious input designed to inject
+code into your web server.

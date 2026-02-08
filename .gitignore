@@ -1,31 +1,31 @@
-**/blob_storage/
-python/test_data
-python/.env
-**/__pycache__/
-*.py[cod]
+# **/blob_storage/
+# python/test_data
+# python/.env
+# **/__pycache__/
+# *.py[cod]
 main.py
 
-# Python cache
-__pycache__/
+# # Python cache
+# __pycache__/
 
-# Temporary files
-*.pyc
-*.pyo
-*.pyd
+# # Temporary files
+# *.pyc
+# *.pyo
+# *.pyd
 
-# Models folder
-models/
+# # Models folder
+# models/
 
-# Blob storage folder
-blob_storage/
+# # Blob storage folder
+# blob_storage/
 
-# chromadb folder
-chromadb_storage/
+# # chromadb folder
+# chromadb_storage/
 
-# OS files
-.DS_Store
-Thumbs.db
+# # OS files
+# .DS_Store
+# Thumbs.db
 
-# Other temp/log folders
-logs/
-temp/
+# # Other temp/log folders
+# logs/
+# temp/

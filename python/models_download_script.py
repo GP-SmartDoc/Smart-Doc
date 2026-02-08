@@ -1,3 +1,7 @@
+'''
+This script is ran once to download all neccessary models
+'''
+
 import os
 from huggingface_hub import snapshot_download, hf_hub_download
 from pathlib import Path
@@ -55,8 +59,5 @@ for model in MODELS:
         local_dir_use_symlinks=False
     )
 
-print("✅ All YOLOv11 document layout models downloaded locally.")
+print("All YOLOv11 document layout models downloaded locally.")
 
-# run these commands in terminal (cmd)
-#setx HF_HUB_OFFLINE 1
-#setx TRANSFORMERS_OFFLINE 1

@@ -27,7 +27,7 @@ builder.add_edge("summarizing_agent", END)
 
 qa_module = builder.compile()
 
-def invoke_workflow(prompt:str)->str:
+def invoke_qa_workflow(prompt:str)->str:
     # Query RAG (Ensure RAG.py is also fixed to handle k_image=0 as per previous step)
     retrieved_data = rag.query(prompt, k_text=5, k_image=5)
     
