@@ -1,13 +1,13 @@
-from RAG import RAGEngine
-from QuestionAnswering import QuestionAnsweringModule
-from langchain_ollama import ChatOllama
-import chromadb
+# main.py
 import os
 import sys
-
+import chromadb
+from src.config.model import model
+from src.vector_store.RAG import RAGEngine
+from src.graphs.question_answering_module import QuestionAnsweringModule
 
 # ----------------------------
-# Intent Detection (Lightweight & Explainable)
+# Intent Detection
 # ----------------------------
 def detect_intent(user_input: str) -> str:
     summary_keywords = [
@@ -17,29 +17,27 @@ def detect_intent(user_input: str) -> str:
     visualization_keywords = [
         "diagram", "chart", "plot", "visualize", "visualisation", "graph"
     ]
-
     q = user_input.lower()
-
     if any(k in q for k in summary_keywords):
         return "summary"
     if any(k in q for k in visualization_keywords):
         return "visualization"
     return "qa"
 
-
+# ----------------------------
+# Main Function
+# ----------------------------
 def main():
-    # 1. Initialize System Components
     print("--- Initializing Smart Doc System ---")
     try:
-        # Initialize ChromaDB Client
+        # 1. ChromaDB Client
         client = chromadb.PersistentClient(path="./chroma_db")
 
-        # Initialize RAG Engine
+        # 2. RAG Engine
         rag = RAGEngine(client)
 
-        # Initialize QA Module
-        llm_model = ChatOllama(model="qwen3-vl:4b", temperature=0)
-        qa_module = QuestionAnsweringModule(retriever=rag, model=llm_model)
+        # 3. QA Module (use the class, not module!)
+        qa_module = QuestionAnsweringModule(retriever=rag, model=model)
 
         print("System Ready.\n")
 
@@ -47,7 +45,9 @@ def main():
         print(f"Initialization Error: {e}")
         return
 
-    # 2. Main Execution Loop
+    # ----------------------------
+    # Main Loop
+    # ----------------------------
     while True:
         print("=" * 50)
         pdf_input = input("Enter path to PDF file (or type 'exit' to quit): ").strip()
@@ -61,14 +61,13 @@ def main():
             print(f"Error: File not found at '{pdf_path}'. Please try again.")
             continue
 
-        # Optional but recommended: reset index per document
+        # Reset collections per document if supported
         try:
             rag.reset_collections()
         except AttributeError:
-            # If reset_collections is not implemented yet, ignore safely
             pass
 
-        # 3. Add PDF to RAG
+        # Add PDF to RAG
         print(f"\nProcessing '{os.path.basename(pdf_path)}'...")
         try:
             rag.add_pdf(pdf_path)
@@ -77,27 +76,23 @@ def main():
             print(f"Error processing PDF: {e}")
             continue
 
-        # 4. Question / Task Loop
+        # ----------------------------
+        # Question Loop
+        # ----------------------------
         while True:
             print("-" * 30)
-            question = input(
-                "\nEnter your question "
-                "(or 'new' for new PDF, 'exit' to quit): "
-            ).strip()
+            question = input("\nEnter your question (or 'new' for new PDF, 'exit' to quit): ").strip()
 
             if question.lower() == 'exit':
                 print("Goodbye!")
                 sys.exit(0)
-
             if question.lower() == 'new':
                 print("Returning to file selection...")
                 break
-
             if not question:
                 continue
 
             intent = detect_intent(question)
-
             print(f"\nDetected intent: {intent.upper()}")
             print("Processing...\n")
 
@@ -106,11 +101,10 @@ def main():
                 # Intent Routing
                 # ----------------------------
                 if intent == "summary":
-                    final_answer = qa_module.invoke_workflow(question)
+                    final_answer = qa_module.invoke(question)
                     print("\n" + "#" * 16 + " DOCUMENT SUMMARY " + "#" * 16)
 
                 elif intent == "visualization":
-                    # Placeholder for future visualization pipeline
                     final_answer = (
                         "Visualization pipeline is not implemented yet.\n"
                         "However, the system successfully detected visualization intent."
@@ -118,7 +112,7 @@ def main():
                     print("\n" + "#" * 14 + " VISUALIZATION " + "#" * 14)
 
                 else:  # QA
-                    final_answer = qa_module.invoke_workflow(question)
+                    final_answer = qa_module.invoke(question)
                     print("\n" + "#" * 20 + " ANSWER " + "#" * 20)
 
                 print(final_answer)
@@ -127,6 +121,8 @@ def main():
             except Exception as e:
                 print(f"An error occurred while processing the request: {e}")
 
-
+# ----------------------------
+# Run the main function
+# ----------------------------
 if __name__ == "__main__":
     main()

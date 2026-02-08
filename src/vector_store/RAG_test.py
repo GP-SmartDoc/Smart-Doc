@@ -1,5 +1,5 @@
 import pytest
-from RAG import RAGEngine
+from vector_store.RAG import RAGEngine
 import chromadb
 
 
