@@ -35,194 +35,221 @@ class SlideGenerationModule():
     def __init__(self, retriever:RAGEngine, model:BaseChatModel=ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct")):
         self.__retriever = retriever
         self.__model = model
-        self.__workflow_builder = StateGraph(SlideGenerationGraphState)
+        workflow = StateGraph(SlideGenerationGraphState)
+
+        workflow.add_node("Text_Summarizer", self.Text_Summarizer)
+        workflow.add_node("Image_Captioner", self.Image_Captioner)
+        workflow.add_node("Code_Generator", self.Code_Generator)
+        workflow.add_node("Code_Reviewer", self.Code_Reviewer)
+        workflow.add_node("Page_Reviewer", self.Page_Reviewer)
+        workflow.add_node("Code_Generator_Reviewed", self.Code_Generator_Reviewed)
         
-        def Text_Summarizer(state:dict)   :
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                            content=TS_SYSTEM_PROMPT
-                        ),
-                    HumanMessage(
-                            content=TS_USER_PROMPT.replace(
-                                "<Document text>",
-                                state["retrieved_text"]
-                            )
+        workflow.add_edge(START, "Text_Summarizer")
+        workflow.add_edge("Text_Summarizer", "Image_Captioner")
+        workflow.add_edge("Image_Captioner", "Code_Generator")
+        workflow.add_edge("Code_Generator", "Code_Reviewer")
+        #workflow.add_edge("Code_Reviewer", "Page_Reviewer")
+        #workflow.add_edge("Page_Reviewer", "Code_Generator_Reviewed")
+        workflow.add_edge("Code_Reviewer", "Code_Generator_Reviewed")
+        workflow.add_edge("Code_Generator_Reviewed", END)
+        
+        self.__workflow = workflow.compile()
+        
+        
+    def Text_Summarizer(self, state:dict)   :
+        agent_answer:AIMessage = self.__model.invoke(
+            [
+                SystemMessage(
+                        content=TS_SYSTEM_PROMPT
+                    ),
+                HumanMessage(
+                        content=TS_USER_PROMPT.replace(
+                            "<Document text>",
+                            state["retrieved_text"]
                         )
-                ]
-            )
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Text_Summarizer_output": agent_answer.content
-            }
-            
-        def Image_Captioner(state: dict):
-            # 1. Get Image Filenames to show the LLM
-            retrieved_imgs = state.get("retrieved_images", [])
-            
-            # Create a string list of filenames: "Image 1: chart.png", etc.
-            filename_list = []
-            for i, path in enumerate(retrieved_imgs):
-                filename = os.path.basename(path)
-                filename_list.append(f"Image {i+1} Filename: {filename}")
-            
-            filenames_str = "\n".join(filename_list)
+                    )
+            ]
+        )
 
-            # 2. Update the prompt to include these filenames
-            text_prompt = IC_USER_PROMPT.replace("<Document Text>", state["retrieved_text"])
-            text_prompt += f"\n\nREFERENCED IMAGE FILENAMES:\n{filenames_str}"
-            
-            # 3. Build the message (using the fix from before)
-            message_content = [{"type": "text", "text": text_prompt}]
-            
-            for img_path in retrieved_imgs:
-                # Use the helper to get base64 (from previous fix)
-                base64_image = self._encode_image(img_path)
-                if base64_image:
-                    message_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-                    })
+        self._log_agent_output("Text_Summarizer", agent_answer.content)
 
-            # 4. Invoke LLM
-            agent_answer: AIMessage = self.__model.invoke([
-                SystemMessage(content=IC_SYSTEM_PROMPT),
-                HumanMessage(content=message_content)
-            ])
-            
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Image_Captioner_output": agent_answer.content
-            }
-            
-        def Code_Generator(state:dict)   :
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                            content=CG_SYSTEM_PROMPT
-                        ),
-                    HumanMessage(
-                            content=CG_USER_PROMPT.replace(
-                                "<SlidevGrammar>",
-                                SLIDEV_GRAMMAR
-                            ).replace(
-                                "<TextSummary.md>",
-                                state["Text_Summarizer_output"]
-                            ).replace(
-                                "<ImageCaption.md>",
-                                state["Image_Captioner_output"]
-                            )
-                    )
-                ]
-            )
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Code_Generator_output": agent_answer.content
-            }
-            
-        def Code_Reviewer(state:dict)   :
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                            content=CR_SYSTEM_PROMPT
-                        ),
-                    HumanMessage(
-                            content=CR_USER_PROMPT.replace(
-                                "<SlidevGrammar>",
-                                SLIDEV_GRAMMAR
-                            ).replace(
-                                "<TextSummary.md>",
-                                state["Text_Summarizer_output"]
-                            ).replace(
-                                "<ImageCaption.md>",
-                                state["Image_Captioner_output"]
-                            ).replace(
-                                "<SlidevCode.md>",
-                                state["Code_Generator_output"]
-                            )
-                    )
-                ]
-            )
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Code_Reviewer_output": agent_answer.content
-            }
-            
-        def Page_Reviewer(state:dict)   :
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                            content=PR_SYSTEM_PROMPT
-                        ),
-                    HumanMessage(
-                            content=PR_USER_PROMPT.replace(
-                                "<SlidevPages>",
-                                SLIDEV_PAGES
-                            ).replace(
-                                "<ImageCaption.md>",
-                                state["Image_Captioner_output"]
-                            ).replace(
-                                "<Document Images>",
-                                "\n".join(state["retrieved_images"])
-                            )
-                    )
-                ]
-            )
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Page_Reviewer_output": agent_answer.content
-            }
-            
-        def Code_Generator_Reviewed(state:dict)   :
-            agent_answer:AIMessage = self.__model.invoke(
-                [
-                    SystemMessage(
-                            content=CGR_SYSTEM_PROMPT
-                        ),
-                    HumanMessage(
-                            content=CGR_USER_PROMPT.replace(
-                                "<SlidevGrammar>",
-                                SLIDEV_GRAMMAR
-                            ).replace(
-                                "<TextSummary.md>",
-                                state["Text_Summarizer_output"]
-                            ).replace(
-                                "<ImageCaption.md>",
-                                state["Image_Captioner_output"]
-                            ).replace(
-                                "<CodeReview.md>",
-                                state["Code_Reviewer_output"]
-                            )
-                    )
-                ]
-            )
-            return {
-                "messages": [agent_answer.content],
-                "llm_calls": state.get('llm_calls', 0) + 1,
-                "Code_Generator_output_Reviewed": agent_answer.content
-            }
-            
-        self.__workflow_builder.add_node("Text_Summarizer", Text_Summarizer)
-        self.__workflow_builder.add_node("Image_Captioner", Image_Captioner)
-        self.__workflow_builder.add_node("Code_Generator", Code_Generator)
-        self.__workflow_builder.add_node("Code_Reviewer", Code_Reviewer)
-        self.__workflow_builder.add_node("Page_Reviewer", Page_Reviewer)
-        self.__workflow_builder.add_node("Code_Generator_Reviewed", Code_Generator_Reviewed)
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Text_Summarizer_output": agent_answer.content
+        }
         
-        self.__workflow_builder.add_edge(START, "Text_Summarizer")
-        self.__workflow_builder.add_edge("Text_Summarizer", "Image_Captioner")
-        self.__workflow_builder.add_edge("Image_Captioner", "Code_Generator")
-        self.__workflow_builder.add_edge("Code_Generator", "Code_Reviewer")
-        self.__workflow_builder.add_edge("Code_Reviewer", "Page_Reviewer")
-        self.__workflow_builder.add_edge("Page_Reviewer", "Code_Generator_Reviewed")
-        self.__workflow_builder.add_edge("Code_Generator_Reviewed", END)
+    def Image_Captioner(self, state: dict):
+        # 1. Get Image Filenames to show the LLM
+        retrieved_imgs = state.get("retrieved_images", [])
         
-        self.__workflow = self.__workflow_builder.compile()
+        # Create a string list of filenames: "Image 1: chart.png", etc.
+        filename_list = []
+        for i, path in enumerate(retrieved_imgs):
+            filename = os.path.basename(path)
+            filename_list.append(f"Image {i+1} Filename: {filename}")
+        
+        filenames_str = "\n".join(filename_list)
+
+        # 2. Update the prompt to include these filenames
+        text_prompt = IC_USER_PROMPT.replace("<Document Text>", state["retrieved_text"])
+        text_prompt += f"\n\nREFERENCED IMAGE FILENAMES:\n{filenames_str}"
+        
+        # 3. Build the message (using the fix from before)
+        message_content = [{"type": "text", "text": text_prompt}]
+        
+        for img_path in retrieved_imgs:
+            # Use the helper to get base64 (from previous fix)
+            base64_image = self._encode_image(img_path)
+            if base64_image:
+                message_content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                })
+
+        # 4. Invoke LLM
+        agent_answer: AIMessage = self.__model.invoke([
+            SystemMessage(content=IC_SYSTEM_PROMPT),
+            HumanMessage(content=message_content)
+        ])
+
+        self._log_agent_output("Image_Captioner", agent_answer.content)
+        
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Image_Captioner_output": agent_answer.content
+        }
+        
+    def Code_Generator(self, state:dict)   :
+        agent_answer:AIMessage = self.__model.invoke(
+            [
+                SystemMessage(
+                        content=CG_SYSTEM_PROMPT
+                    ),
+                HumanMessage(
+                        content=CG_USER_PROMPT.replace(
+                            "<SlidevGrammar>",
+                            SLIDEV_GRAMMAR
+                        ).replace(
+                            "<TextSummary.md>",
+                            state["Text_Summarizer_output"]
+                        ).replace(
+                            "<ImageCaption.md>",
+                            state["Image_Captioner_output"]
+                        )
+                )
+            ]
+        )
+
+        self._log_agent_output("Code_Generator", agent_answer.content)
+
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Code_Generator_output": agent_answer.content
+        }
+        
+    def Code_Reviewer(self, state:dict)   :
+        agent_answer:AIMessage = self.__model.invoke(
+            [
+                SystemMessage(
+                        content=CR_SYSTEM_PROMPT
+                    ),
+                HumanMessage(
+                        content=CR_USER_PROMPT.replace(
+                            "<SlidevGrammar>",
+                            SLIDEV_GRAMMAR
+                        ).replace(
+                            "<TextSummary.md>",
+                            state["Text_Summarizer_output"]
+                        ).replace(
+                            "<ImageCaption.md>",
+                            state["Image_Captioner_output"]
+                        ).replace(
+                            "<SlidevCode.md>",
+                            state["Code_Generator_output"]
+                        )
+                )
+            ]
+        )
+
+        self._log_agent_output("Code_Reviewer", agent_answer.content)
+
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Code_Reviewer_output": agent_answer.content
+        }
+        
+    def Page_Reviewer(self, state:dict)   :
+        agent_answer:AIMessage = self.__model.invoke(
+            [
+                SystemMessage(
+                        content=PR_SYSTEM_PROMPT
+                    ),
+                HumanMessage(
+                        content=PR_USER_PROMPT.replace(
+                            "<SlidevPages>",
+                            SLIDEV_PAGES
+                        ).replace(
+                            "<ImageCaption.md>",
+                            state["Image_Captioner_output"]
+                        ).replace(
+                            "<Document Images>",
+                            "\n".join(state["retrieved_images"])
+                        )
+                )
+            ]
+        )
+
+        self._log_agent_output("Page_Reviewer", agent_answer.content)
+
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Page_Reviewer_output": agent_answer.content
+        }
+        
+    def Code_Generator_Reviewed(self, state:dict)   :
+        agent_answer:AIMessage = self.__model.invoke(
+            [
+                SystemMessage(
+                        content=CGR_SYSTEM_PROMPT
+                    ),
+                HumanMessage(
+                        content=CGR_USER_PROMPT.replace(
+                            "<SlidevGrammar>",
+                            SLIDEV_GRAMMAR
+                        ).replace(
+                            "<TextSummary.md>",
+                            state["Text_Summarizer_output"]
+                        ).replace(
+                            "<ImageCaption.md>",
+                            state["Image_Captioner_output"]
+                        ).replace(
+                            "<CodeReview.md>",
+                            state["Code_Reviewer_output"]
+                        )
+                )
+            ]
+        )
+
+        self._log_agent_output("Code_Generator_Reviewed", agent_answer.content)
+
+        return {
+            "messages": [agent_answer.content],
+            "llm_calls": state.get('llm_calls', 0) + 1,
+            "Code_Generator_output_Reviewed": agent_answer.content
+        }
+        
+    def _log_agent_output(self, agent_name, content):
+        """Appends agent output to a debug log file."""
+        with open("workflow_debug_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"\n{'='*20} AGENT: {agent_name} {'='*20}\n")
+            f.write(content)
+            f.write(f"\n\n")
+            
         
     # In SlideGeneration.py inside SlideGenerationModule class
 
@@ -231,7 +258,10 @@ class SlideGenerationModule():
         Main entry point: Queries RAG, copies images to local folder, then runs generation.
         """
         print(f"Retrieving content for: {topic}...")
-        rag_result = self.__retriever.query(topic, k_text=5, k_image=3)
+        rag_result = self.__retriever.query(topic, k_text=5, k_image=5)
+
+        with open("workflow_debug_log.txt", "w", encoding="utf-8") as f:
+            f.write(f"--- Workflow Log for Topic: {topic} ---\n")
         
         text_content = "\n\n".join(rag_result.get("text", []))
         original_images = rag_result.get("images", [])
@@ -359,10 +389,10 @@ Image Captions: <ImageCaption.md>
 Please merge the content of <TextSummary.md> and <ImageCaption.md> into a single file formatted using the Slidev grammar provided.
 
 The merged file should meet the following requirements:
-1. **CRITICAL IMAGE PATH RULE**: You must use the image descriptions from <ImageCaption.md>. For every image, set the path to 'images/<filename>'. 
-   - Example: If the filename is "chart.png", write `![Title](images/chart.png)`.
-   - DO NOT use absolute paths (e.g., C:/Users/...). 
-   - DO NOT use backslashes (\\). Use forward slashes (/) only.
+1. **CRITICAL IMAGE PATH RULE**: 
+   - If using `layout: image-right`, `layout: image-left`, or `layout: full`, you must define the image in the slide frontmatter like this: `image: images/filename.png`.
+   - If using a standard layout, use standard markdown: `![Title](images/filename.png)`.
+   - DO NOT use absolute paths. Use forward slashes (/) only.
 2. Design each page so that elements in the same column are not overcrowded. Split content into multiple columns if necessary to prevent overflow.
 3. Avoid pages with too few elements. Expand content where needed to ensure an appropriate balance.
 4. If certain columns contain only images without text, center the images on the page.
@@ -421,10 +451,10 @@ Here is the Slidev grammar specification: <SlidevGrammar>
 Additionally, here are three files: 
 Text Summary: <TextSummary.md> 
 Image Captions: <ImageCaption.md> 
-Review Feedback: <CodeReview.md> or <PageReview.md> 
+Review Feedback: <CodeReview.md>
 
 Please merge the content of <TextSummary.md> and <ImageCaption.md> into a single file formatted using the Slidev grammar provided. 
-While doing so, take into account the feedback provided in <CodeReview.md> or <PageReview.md> and address any relevant issues.
+While doing so, take into account the feedback provided in <CodeReview.md> and address any relevant issues.
 
 The merged file should meet the following requirements:
 1. **CRITICAL**: Ensure all image paths are relative and use forward slashes (e.g., `images/filename.png`). Correct any paths that use backslashes or absolute paths.
@@ -441,41 +471,127 @@ Output the final code in Markdown format as <SlidevCode.md>. Ensure the code is 
 
 # --- SLIDEV TEMPLATES ---
 SLIDEV_GRAMMAR = """
-# Slidev Markdown Grammar
+# Slidev Markdown Grammar Reference
+
+## 1. Frontmatter (Global Configuration)
+Always start the file with this block.
 ---
-# Frontmatter (first slide)
-layout: cover
-title: My Slide Title
+theme: seriph
+background: background\simple-blue-gradient-background-vector-business_53876-169287.jpg
+class: text-center
+highlighter: shiki
+lineNumbers: false
+drawings:
+  persist: false
+title: [Insert Presentation Title]
 ---
 
-# Standard Slide
+## 2. Standard Slide Syntax
+---
+# [Slide Title]
 
-# Slide Title
+- [Bullet Point 1]
+- [Bullet Point 2]
+- **Bold Text** for emphasis
 
-- Bullet point 1
-- Bullet point 2
+---
 
+## 3. Two-Column Layout (Text + Text)
+Use this for comparing two concepts.
 ---
 layout: two-cols
 
 ::left::
-# Left Column
-Content here
+# Left Side Title
+- Point A
+- Point B
 
 ::right::
-# Right Column
-Content here
+# Right Side Title
+- Point C
+- Point D
+---
+
+## 4. Image + Text Layouts (Preferred over manual images)
+Use `image-right` or `image-left` layouts. Define the image path in the frontmatter of the slide.
 
 ---
-# Image Slide
-![Alt Text](images/filename.png)
+layout: image-right
+image: images/filename.png
+backgroundSize: contain
+---
+# Slide Title
+
+- This text appears on the left.
+- The image appears on the right automatically.
+---
+
+## 5. Full Screen Image
+---
+layout: full
+image: images/filename.png
+---
+---
+
+## 6. Quote / Statement Slide
+Use for impact statements or summaries.
+---
+layout: center
+class: text-center
+---
+# "Key takeaway or quote goes here"
+
+- Author Name
+---
+
+## 7. Section Break / Intro
+---
+layout: intro
+class: text-center
+---
+# [Section Title]
+[Subtitle or short description]
+---
+
+## 8. Styling Tips (Tailwind CSS)
+You can use HTML tags with Tailwind classes for coloring or sizing.
+- <span class="text-red-500">Red Text</span>
+- <span class="text-xl font-bold">Big Bold Text</span>
+- <div class="grid grid-cols-3 gap-4"> (Advanced Grid) </div>
 """
 
 SLIDEV_PAGES = """
-Available Layouts:
-1. 'cover': Use for the first slide. Contains title and subtitle.
-2. 'default': Standard Title + Content.
-3. 'two-cols': Split screen. Use ::left:: and ::right:: separators.
-4. 'image-right': Content on left, image on right.
-5. 'center': Centered text for quotes or impact statements.
+Layout Usage Guide:
+
+1. **layout: cover** - USE ONLY ONCE: For the very first slide. 
+   - Must include title and author.
+
+2. **layout: intro**
+   - Use to introduce a major new section or topic change.
+   - Centers the text for dramatic effect.
+
+3. **layout: default**
+   - Use for standard bullet points.
+   - Best when there are no images, or small inline images only.
+
+4. **layout: image-right** (Highly Recommended)
+   - Use when you have a specific image to discuss.
+   - Puts text on the left, image on the right.
+   - Looks more professional than manually inserting `![img]()`.
+
+5. **layout: image-left**
+   - Same as above, but image on the left.
+   - Use to vary the visual rhythm.
+
+6. **layout: two-cols**
+   - Use when comparing two distinct lists or concepts.
+   - Do NOT use this just to place an image (use image-right instead).
+
+7. **layout: center**
+   - Use for the "Summary" slide or a powerful Quote.
+   - Centers content horizontally and vertically.
+
+8. **layout: full**
+   - Use for high-resolution diagrams that need maximum space.
+   - No text is preferable, or very minimal overlay text.
 """

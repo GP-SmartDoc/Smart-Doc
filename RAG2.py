@@ -33,8 +33,9 @@ class RAGEngine:
         os.makedirs(blob_storage_path, exist_ok=True)
 
         # ---------------- EMBEDDERS ----------------
+        mpnet_dir = "./models/all-mpnet-base-v2"
         self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-MiniLM-L6-v2"
+            model_name=mpnet_dir
         )
 
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(

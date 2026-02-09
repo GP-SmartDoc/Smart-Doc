@@ -1,0 +1,12 @@
+__pycache__/
+.vscode/
+blob_storage/
+chroma_db/
+env/
+images/
+models/
+node_modules/
+my-presentation.pptx
+package-lock.json
+workflow_debug_log.txt
+slides.md
