@@ -8,8 +8,14 @@ from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.visualize_graph import generate_slides
 from langchain.messages import SystemMessage, HumanMessage
+from fastapi import FastAPI, UploadFile, File, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
 
 from src.utils.pptx import save_as_pptx
+
+
 
 # ----------------------------
 # Model-driven Intent Detection
@@ -37,108 +43,82 @@ User Input:
         return "qa"  # fallback default
     return intent
 
+
+
+
 # ----------------------------
-# Main Function
+# GUI
 # ----------------------------
-def main():
-    print("--- Initializing Smart Doc System ---")
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ----------------------------
+# Main
+# ----------------------------
+print("--- Initializing Smart Doc System ---")
+try:
+    # 1. ChromaDB Client
+    client = chromadb.PersistentClient(path="./chroma_db")
+
+    # 2. RAG Engine
+    rag = RAGEngine(client)
+
+    # 3. Initialize QA and Summary modules
+    qa_module = QuestionAnsweringModule(retriever=rag, model=model)
+    summary_module = SummarizationModule(retriever=rag, model=model)
+    visualization_module = lambda prompt: generate_slides(rag, prompt)
+    print("System Ready.\n")
+except Exception as e:
+    print(f"Initialization Error: {e}")
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/send")
+def receive_message(data: dict):
+    user_msg = data.get("message", "")
+    mode = data.get("mode", "qa")  # default to "qa"
+
+    ##########################################
+    """#########  Call LLM Here Based on Mode ##########"""
+    ##########################################
+
+    if mode == "qa":
+        reply = qa_module.invoke(user_msg)
+    elif mode == "summarize":
+        result = summary_module.invoke(user_msg)
+        reply = result.get("summary", str(result)) if isinstance(result, dict) else str(result)
+    elif mode == "viz":
+        reply = visualization_module(user_msg)
+        save_as_pptx(reply, "generated_slides.pptx")
+        reply = "Visualization generated and saved as 'generated_slides.pptx'."
+    else:
+        reply = f"You said: {user_msg}"
+
+    return {"reply": reply}
+
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    file_path = f"{UPLOAD_FOLDER}/{file.filename}"
     try:
-        # 1. ChromaDB Client
-        client = chromadb.PersistentClient(path="./chroma_db")
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
 
-        # 2. RAG Engine
-        rag = RAGEngine(client)
-
-        # 3. Initialize QA and Summary modules
-        qa_module = QuestionAnsweringModule(retriever=rag, model=model)
-        summary_module = SummarizationModule(retriever=rag, model=model)
-        visualization_module = lambda prompt: generate_slides(rag, prompt)
-        print("System Ready.\n")
+        rag.add_pdf(file_path)
+        print("PDF successfully indexed.")
     except Exception as e:
-        print(f"Initialization Error: {e}")
+        print(f"Error processing PDF: {e}")
         return
 
-    # ----------------------------
-    # Main Loop
-    # ----------------------------
-    while True:
-        print("=" * 50)
-        pdf_input = input("Enter path to PDF file (or type 'exit' to quit): ").strip()
-        pdf_path = pdf_input.strip('"').strip("'")
+    ##########################################
+    """#######  Process File Here  ########"""
+    ##########################################
 
-        if pdf_path.lower() == 'exit':
-            print("Goodbye!")
-            break
-
-        if not os.path.exists(pdf_path):
-            print(f"Error: File not found at '{pdf_path}'. Please try again.")
-            continue
-
-        # Reset collections per document if supported
-        try:
-            rag.reset_collections()
-        except AttributeError:
-            pass
-
-        # Add PDF to RAG
-        print(f"\nProcessing '{os.path.basename(pdf_path)}'...")
-        try:
-            rag.add_pdf(pdf_path)
-            print("PDF successfully indexed.")
-        except Exception as e:
-            print(f"Error processing PDF: {e}")
-            continue
-
-        # ----------------------------
-        # Question Loop
-        # ----------------------------
-        while True:
-            print("-" * 30)
-            question = input("\nEnter your question (or 'new' for new PDF, 'exit' to quit): ").strip()
-
-            if question.lower() == 'exit':
-                print("Goodbye!")
-                sys.exit(0)
-            if question.lower() == 'new':
-                print("Returning to file selection...")
-                break
-            if not question:
-                continue
-
-            # ----------------------------
-            # Detect Intent Using Model
-            # ----------------------------
-            intent = detect_intent_model(question)
-            print(f"\nDetected intent: {intent.upper()}")
-            print("Processing...\n")
-
-            try:
-                # ----------------------------
-                # Route to Appropriate Module
-                # ----------------------------
-                if intent == "summary":
-                    final_answer = summary_module.invoke(question)
-                    print("\n" + "#" * 16 + " DOCUMENT SUMMARY " + "#" * 16)
-                elif intent == "visualization":
-                    final_answer = visualization_module(question)
-                    print("\n" + "#" * 14 + " VISUALIZATION " + "#" * 14)
-                    save_as_pptx(final_answer,"Presentation.pptx")  # Save the generated slides as PPTX
-                else:  # QA
-                    final_answer = qa_module.invoke(question)
-                    print("\n" + "#" * 20 + " ANSWER " + "#" * 20)
-
-                # ----------------------------
-                # Print Result
-                # ----------------------------
-                if intent != "visualization":
-                    print(final_answer)
-                print("#" * 48 + "\n")
-
-            except Exception as e:
-                print(f"An error occurred while processing the request: {e}")
-
-# ----------------------------
-# Run the main function
-# ----------------------------
-if __name__ == "__main__":
-    main()
+    return {"status": f"✅ {file.filename} uploaded"}
