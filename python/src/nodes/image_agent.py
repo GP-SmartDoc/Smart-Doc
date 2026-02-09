@@ -12,7 +12,13 @@ def image_agent(state:dict):
     critical_image_info = critical_agent_output.get("image")
     
     msg_content = [
-        {"type": "text", "text": f"Textual Content: {state.get('retrieved_text')}\nQuestion: {state.get('user_question')}"}
+        {
+            "type": "text", 
+            "text": f"""
+                Question: {state.get("user_question", "")}
+                Critical Image Information: {critical_image_info}
+            """
+        }
     ]
     if state.get("retrieved_images"):
         for img_b64 in state.get("retrieved_images"):
@@ -27,15 +33,16 @@ def image_agent(state:dict):
                 content=prompts.IA_SYSTEM_PROMPT
             ),
             HumanMessage(
-                content=f"""
-                    Question: {state.get("user_question", "")}
-                    Critical Image Information: {critical_image_info}
-                    Image Content: {state.get("retrieved_images", "No images provided")}
-                """
+                # content=f"""
+                #     Question: {state.get("user_question", "")}
+                #     Critical Image Information: {critical_image_info}
+                #     Image Content: {state.get("retrieved_images", "No images provided")}
+                # """
+                msg_content
             )
         ]
     )
-
+    print("IMAGE AGENT ANSWER: ", agent_answer)
     return {
         "messages": [agent_answer],
         "llm_calls": 1,

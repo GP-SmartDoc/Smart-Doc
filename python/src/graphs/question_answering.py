@@ -33,7 +33,7 @@ def invoke_qa_workflow(prompt:str)->str:
     
     text_content = retrieved_data.get("text")
     retrieved_text = "\n".join(text_content)
-
+    
     retrieved_images = retrieved_data.get("images")
     
     initial_state = {

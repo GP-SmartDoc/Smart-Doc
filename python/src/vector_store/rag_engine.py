@@ -10,13 +10,15 @@ import fitz
 import io
 import os
 import uuid
-import torch
+import torch  
 
 from ultralytics import YOLO
 from pathlib import Path
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from transformers import BlipProcessor, BlipForConditionalGeneration
+
+from src.utils.image import encode_image_from_path
 
 class RAGEngine:
     """
@@ -93,7 +95,7 @@ class RAGEngine:
             text = f.read()
         
         # Proper Chunking
-        chunks = self.__splitter.split_text(text)
+        chunks = self.__child_splitter.split_text(text)
         
         if chunks:
             ids = [f"{os.path.basename(file_path)}_chunk_{i}" for i in range(len(chunks))]
@@ -265,8 +267,17 @@ class RAGEngine:
             n_results=k_image,
             include=["uris"]
         )
-
+        
+        encoded_images = []
+        for path in img_res.get("uris", [[]])[0]: 
+            utf8_image = encode_image_from_path(path)
+            encoded_images.append(utf8_image)
+            
+        # return {
+        #     "text": text_res.get("documents", [[]])[0],
+        #     "images": img_res.get("uris", [[]])[0]
+        # }
         return {
             "text": text_res.get("documents", [[]])[0],
-            "images": img_res.get("uris", [[]])[0]
+            "images": encoded_images
         }

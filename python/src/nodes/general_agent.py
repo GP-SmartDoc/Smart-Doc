@@ -17,7 +17,7 @@ def general_agent(state:dict):
             )
         ]
     )
-    
+    print("GENERAL AGENT ANSWER: ", agent_answer)
     return {
         "messages": [agent_answer],
         "llm_calls": 1,

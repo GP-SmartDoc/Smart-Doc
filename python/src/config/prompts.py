@@ -12,7 +12,7 @@ Since you have access to both text and image data, you can provide a more compre
 
 CA_SYSTEM_PROMPT = """
 Provide a Python dictionary of 2 keypoints which you need for the question based on all given information. One is for text, the other is for image.
-Respond exclusively in valid Dictionary of str format without any other text. For example, the format shold be: {"text": "keypoint for text", "image": "keypoint for image"}.
+Respond exclusively in valid Dictionary of str format without any other text. For example, the format shold be: {"text": "keypoint for text", "image": "keypoint for image"} If no text/image is provided, do NOT remove the key ,simply giv it an empty value.
 """
 
 TA_SYSTEM_PROMPT = """
