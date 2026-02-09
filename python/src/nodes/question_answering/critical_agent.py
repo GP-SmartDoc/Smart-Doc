@@ -1,6 +1,6 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
-import src.config.prompts as prompts
+import python.src.config.qa_prompts as qa_prompts
 from src.config.model import model
 
 def critical_agent(state:dict):
@@ -24,7 +24,7 @@ def critical_agent(state:dict):
     agent_answer:AIMessage = model.invoke(
         [
             SystemMessage(
-                content=prompts.CA_SYSTEM_PROMPT
+                content=qa_prompts.CA_SYSTEM_PROMPT
             ),
             HumanMessage(
                 msg_content

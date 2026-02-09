@@ -1,14 +1,14 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 import json 
 
-import src.config.prompts as prompts
+import python.src.config.qa_prompts as qa_prompts
 from src.config.model import model
 
 def summarizing_agent(state:dict):
     agent_answer:AIMessage = model.invoke(
         [
             SystemMessage(
-                content=prompts.SA_SYSTEM_PROMPT
+                content=qa_prompts.SA_SYSTEM_PROMPT
             ),
             HumanMessage(
                 content=f"""

@@ -1,11 +1,11 @@
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain.messages import AnyMessage, HumanMessage, AIMessage
 
-from src.nodes.critical_agent import critical_agent
-from src.nodes.general_agent import general_agent
-from src.nodes.image_agent import image_agent
-from src.nodes.summarizing_agent import summarizing_agent
-from src.nodes.text_agent import text_agent
+from src.nodes.question_answering.critical_agent import critical_agent
+from python.src.nodes.question_answering.general_agent import general_agent
+from python.src.nodes.question_answering.image_agent import image_agent
+from python.src.nodes.question_answering.summarizing_agent import summarizing_agent
+from python.src.nodes.question_answering.text_agent import text_agent
 from src.states.QAState import QuestionAnsweringGraphState
 from src.vector_store.chroma import rag
 

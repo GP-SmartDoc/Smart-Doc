@@ -1,10 +1,5 @@
-import re 
 import json
-
-def clean_json_string(s):
-    s = re.sub(r'```json\s*', '', s)
-    s = re.sub(r'```', '', s)
-    return s.strip()
+import re
 
 def safe_json_parse(text, fallback):
     try:

@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 import json 
 
-import src.config.prompts as prompts
+import python.src.config.qa_prompts as qa_prompts
 from src.config.model import model
 from src.utils.json import clean_json_string
 
@@ -11,7 +11,7 @@ def text_agent(state:dict):
     agent_answer:AIMessage = model.invoke(
         [
             SystemMessage(
-                content=prompts.TA_SYSTEM_PROMPT
+                content=qa_prompts.TA_SYSTEM_PROMPT
             ),
             HumanMessage(
                 content=f"""
