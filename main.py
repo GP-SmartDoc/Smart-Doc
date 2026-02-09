@@ -6,24 +6,33 @@ from src.config.model import model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
+from langchain.messages import SystemMessage, HumanMessage
 
 # ----------------------------
-# Intent Detection
+# Model-driven Intent Detection
 # ----------------------------
-def detect_intent(user_input: str) -> str:
-    summary_keywords = [
-        "summarize", "summary", "overview", "tl;dr", "abstract",
-        "give me a summary", "summarise"
-    ]
-    visualization_keywords = [
-        "diagram", "chart", "plot", "visualize", "visualisation", "graph"
-    ]
-    q = user_input.lower()
-    if any(k in q for k in summary_keywords):
-        return "summary"
-    if any(k in q for k in visualization_keywords):
-        return "visualization"
-    return "qa"
+def detect_intent_model(user_input: str) -> str:
+    """
+    Ask the LLM to classify the user input intent.
+    Returns one of: 'summary', 'visualization', 'qa'.
+    """
+    prompt = f"""
+Determine the intent of the following user input.
+Return ONLY one word: 'summary', 'visualization', or 'qa'.
+
+User Input:
+\"\"\"{user_input}\"\"\"
+"""
+    resp = model.invoke([
+        SystemMessage(content="You are an assistant that classifies user intent."),
+        HumanMessage(content=prompt)
+    ])
+    
+    # Normalize response
+    intent = resp.content.strip().lower()
+    if intent not in ["summary", "visualization", "qa"]:
+        return "qa"  # fallback default
+    return intent
 
 # ----------------------------
 # Main Function
@@ -42,7 +51,6 @@ def main():
         summary_module = SummarizationModule(retriever=rag, model=model)
 
         print("System Ready.\n")
-
     except Exception as e:
         print(f"Initialization Error: {e}")
         return
@@ -94,35 +102,38 @@ def main():
             if not question:
                 continue
 
-            intent = detect_intent(question)
+            # ----------------------------
+            # Detect Intent Using Model
+            # ----------------------------
+            intent = detect_intent_model(question)
             print(f"\nDetected intent: {intent.upper()}")
             print("Processing...\n")
 
             try:
                 # ----------------------------
-                # Intent Routing
+                # Route to Appropriate Module
                 # ----------------------------
                 if intent == "summary":
                     final_answer = summary_module.invoke(question)
                     print("\n" + "#" * 16 + " DOCUMENT SUMMARY " + "#" * 16)
-
                 elif intent == "visualization":
                     final_answer = (
                         "Visualization pipeline is not implemented yet.\n"
                         "However, the system successfully detected visualization intent."
                     )
                     print("\n" + "#" * 14 + " VISUALIZATION " + "#" * 14)
-
                 else:  # QA
                     final_answer = qa_module.invoke(question)
                     print("\n" + "#" * 20 + " ANSWER " + "#" * 20)
 
+                # ----------------------------
+                # Print Result
+                # ----------------------------
                 print(final_answer)
                 print("#" * 48 + "\n")
 
             except Exception as e:
                 print(f"An error occurred while processing the request: {e}")
-
 
 # ----------------------------
 # Run the main function

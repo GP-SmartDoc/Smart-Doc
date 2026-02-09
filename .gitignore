@@ -1,2 +1,16 @@
 .env
 .env.*
+models/
+blob_storage/
+chroma_db/
+src/config/__pycache__/
+src/config/__init__.py
+src/graphs/__pycache__/
+src/graphs/__init__.py
+src/nodes/__pycache__/
+src/nodes/__init__.py
+src/utils/__pycache__/
+src/vector_store/__pycache__/
+src/__init__.py
+__pycache__/
+
