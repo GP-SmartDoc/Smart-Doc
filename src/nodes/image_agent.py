@@ -1,4 +1,4 @@
-from langchain.messages import SystemMessage, HumanMessage
+from langchain.messages import SystemMessage, HumanMessage, AIMessage
 from src.config.model import model
 import src.config.summarization_prompts as prompts
 import src.config.qa_prompts as qprompts
@@ -6,82 +6,29 @@ import json
 from src.utils.json import clean_json_string
 
 
-def image_micro_agent(state, model):
-    captions = state.get("image_captions", [])
-
-    # HARD STOP: do not hallucinate if no captions
-    if not captions:
-        return {
-            "image_answers": [],
-            "llm_calls": 0
-        }
-
-    merged_caption = "\n".join(
-        f"- Region {i+1}: {cap}"
-        for i, cap in enumerate(captions)
-    )
-
-    response = model.invoke([
-        SystemMessage(content=
-            "You analyze technical diagrams and architectures. "
-            "Infer stages, components, workflows, and relationships "
-            "ONLY from the provided descriptions. "
-            "Do NOT say you cannot see the image."
-        ),
-        HumanMessage(content=f"""
-User Question:
-{state.get('user_question','')}
-
-Visual Descriptions:
-{merged_caption}
-
-Infer the architecture or process clearly.
-""")
-    ])
-
-    return {
-        "image_answers": [response.content],
-        "llm_calls": 1
-    }
-
-
-def image_modality_agent(state: dict, model):
+def image_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
+    system_prompt = prompts.IA_SYSTEM_PROMPT if intent == "summary" else qprompts.QA_GA_SYSTEM_PROMPT
 
-    # ❌ REMOVE image_summaries from QA path completely
-    image_answers = state.get("image_answers", [])
+    critical_output = json.loads(clean_json_string(state.get("ca_output", "{}")))
+    critical_image_info = critical_output.get("image", "")
 
-    # If image_micro_agent produced nothing, skip cleanly
-    if not image_answers:
-        return {
-            "image_answer": "",
-            "llm_calls": 0
-        }
+    msg_content = [
+        {"type": "text", "text": f"Question: {state.get('user_question', '')}\nCritical Image Info: {critical_image_info}"}
+    ]
 
-    # Merge micro reasoning into single evidence block
-    image_text = "\n".join(image_answers)
+    # Attach base64 images if available
+    for img_b64 in state.get("retrieved_images", []):
+        msg_content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
 
-    if intent == "summary":
-        system_prompt = prompts.IA_MODALITY_SYSTEM_PROMPT
-        payload = {
-            "question": state.get("user_question", ""),
-            "image_evidence": image_text
-        }
-        out_key = "image_summary"
-    else:
-        system_prompt = qprompts.QA_GA_SYSTEM_PROMPT
-        payload = {
-            "question": state.get("user_question", ""),
-            "image_evidence": image_text
-        }
-        out_key = "image_answer"
-
-    resp = model.invoke([
+    agent_answer: AIMessage = model.invoke([
         SystemMessage(content=system_prompt),
-        HumanMessage(content=json.dumps(payload))
+        HumanMessage(msg_content)
     ])
 
+    key = "image_summary" if intent == "summary" else "image_answer"
     return {
-        out_key: resp.content,
-        "llm_calls": 1
+        "messages": [agent_answer],
+        "llm_calls": 1,
+        key: agent_answer.content
     }
