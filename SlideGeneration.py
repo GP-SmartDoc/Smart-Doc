@@ -16,6 +16,10 @@ import os
 import shutil
 from RAG import RAGEngine
 
+from pptx import Presentation
+from pptx.util import Inches
+
+
 class SlideGenerationGraphState(TypedDict):
     messages:Annotated[list[str], operator.add]
     llm_calls:int
@@ -27,6 +31,11 @@ class SlideGenerationGraphState(TypedDict):
     Text_Summarizer_output:str
     Image_Captioner_output:str
     Code_Generator_output:str # without review
+
+    # --- ADD THIS FIELD ---
+    json_presentation_data: str # Stores the structured JSON for the PPTX renderer
+    # ----------------------
+    
     Code_Reviewer_output:str
     Page_Reviewer_output:str
     Code_Generator_output_Reviewed:str
@@ -300,6 +309,68 @@ class SlideGenerationModule():
     def visualize_workflow(self):
         from IPython.display import Image, display
         display(Image(self.__workflow.get_graph().draw_mermaid_png()))
+    
+
+    def clean_json_string(self, s):
+        print(f"--- [DEBUG] Attempting to extract JSON from content (Length: {len(s)})")
+        
+        # 1. Try to find content between the first [ and the last ]
+        match = re.search(r'(\[.*\])', s, re.DOTALL)
+        if match:
+            s = match.group(1)
+        
+        # 2. Basic cleanup of markdown markers
+        s = re.sub(r'```json\s*', '', s)
+        s = re.sub(r'```', '', s)
+        
+        return s.strip()
+
+
+    def save_as_pptx(self, raw_llm_output, output_path="GP_Presentation.pptx"):
+        print(f"\n--- [RENDER] Starting PPTX Generation ---")
+        prs = Presentation()
+        
+        cleaned_data = self.clean_json_string(raw_llm_output)
+        
+        try:
+            slides_data = json.loads(cleaned_data)
+            
+            for i, data in enumerate(slides_data):
+                # Layout 1 is 'Title and Content'
+                slide = prs.slides.add_slide(prs.slide_layouts[1])
+                
+                # 1. Set the Title
+                slide.shapes.title.text = data.get("title", f"Slide {i+1}")
+                
+                # 2. Add Bullet Points (ensure we don't include paths here)
+                body_shape = slide.placeholders[1]
+                tf = body_shape.text_frame
+                tf.clear() # Remove default text
+                
+                for point in data.get("content", []):
+                    p = tf.add_paragraph()
+                    p.text = str(point)
+                
+                # 3. FIX: Actually Insert the Image (don't just print the path)
+                img_path = data.get("image_path")
+                if img_path and os.path.exists(img_path):
+                    print(f"[RENDER] Inserting image: {img_path}")
+                    # Position: Right side of the slide
+                    # (left, top, width, height)
+                    slide.shapes.add_picture(
+                        img_path, 
+                        left=Inches(6.5), 
+                        top=Inches(1.5), 
+                        width=Inches(3)
+                    )
+                else:
+                    print(f"[WARNING] Image path invalid or missing: {img_path}")
+
+            prs.save(output_path)
+            print(f"--- [SUCCESS] Presentation saved to {output_path}")
+
+        except Exception as e:
+            print(f"--- [RENDER ERROR]: {e}")
         
         
         
@@ -352,25 +423,22 @@ ensuring it adheres to the specified requirements and formatting conventions. Yo
 """
 
 # UPDATED: Added Requirement #1 to force relative paths and forward slashes
+# UPDATE THIS IN SlideGeneration.py
 CG_USER_PROMPT = """
-Here is a Slidev grammar example file: <SlidevGrammar> Additionally, here are two files:
-Text Summary: <TextSummary.md> 
-Image Captions: <ImageCaption.md>
-Please merge the content of <TextSummary.md> and <ImageCaption.md> into a single file formatted using the Slidev grammar provided.
+You are a JSON Architect. Your task is to structure slide data.
+RULES:
+1. The "content" list should ONLY contain text bullets.
+2. The "image_path" should be a SEPARATE key outside the content list.
+3. Use the exact filenames provided (e.g., "images/diagram1.png").
 
-The merged file should meet the following requirements:
-1. **CRITICAL IMAGE PATH RULE**: You must use the image descriptions from <ImageCaption.md>. For every image, set the path to 'images/<filename>'. 
-   - Example: If the filename is "chart.png", write `![Title](images/chart.png)`.
-   - DO NOT use absolute paths (e.g., C:/Users/...). 
-   - DO NOT use backslashes (\\). Use forward slashes (/) only.
-2. Design each page so that elements in the same column are not overcrowded. Split content into multiple columns if necessary to prevent overflow.
-3. Avoid pages with too few elements. Expand content where needed to ensure an appropriate balance.
-4. If certain columns contain only images without text, center the images on the page.
-5. Consider the aspect ratio of images:
-6. If the aspect ratio exceeds 2:1, the image should span multiple columns in multi-column layouts rather than appearing in a single column.
-7. The first page should include the title and author information.
-8. The last page should serve as a summary page. 
-Output the final code in Markdown format as <SlidevCode.md>. Ensure the code is clean, adheres to the Slidev grammar, and satisfies all specified layout requirements.
+JSON SCHEMA:
+[
+  {
+    "title": "Slide Title",
+    "content": ["bullet 1", "bullet 2"],
+    "image_path": "images/example.png"
+  }
+]
 """
 
 CR_SYSTEM_PROMPT = """
@@ -413,31 +481,35 @@ For each slide:
 Output your review as a Markdown file named <PageReview.md>. Ensure your feedback is concise and easy to follow.
 """
 
-CGR_SYSTEM_PROMPT = CG_SYSTEM_PROMPT
+# Also update the system prompt for the final agent
+CGR_SYSTEM_PROMPT = "You are a specialized JSON data formatter. You never output Markdown or Slidev code. You only output structured JSON arrays."
 
 # UPDATED: Enforce path rule in the correction phase too
+# Force the final agent to stay in JSON mode
 CGR_USER_PROMPT = """
-Here is the Slidev grammar specification: <SlidevGrammar>
-Additionally, here are three files: 
+Act as a JSON Architect. Convert the following text and image summaries into a valid JSON array for PowerPoint.
+
+INPUTS:
 Text Summary: <TextSummary.md> 
 Image Captions: <ImageCaption.md> 
 Review Feedback: <CodeReview.md> or <PageReview.md> 
 
-Please merge the content of <TextSummary.md> and <ImageCaption.md> into a single file formatted using the Slidev grammar provided. 
-While doing so, take into account the feedback provided in <CodeReview.md> or <PageReview.md> and address any relevant issues.
+CRITICAL RULES:
+1. OUTPUT ONLY A VALID JSON ARRAY.
+2. DO NOT include markdown backticks (```json).
+3. DO NOT include headers like "# SlidevCode.md".
+4. START with '[' and END with ']'.
 
-The merged file should meet the following requirements:
-1. **CRITICAL**: Ensure all image paths are relative and use forward slashes (e.g., `images/filename.png`). Correct any paths that use backslashes or absolute paths.
-2. Use the image descriptions from <ImageCaption.md> as the definitive source for image content.
-3. Design each page so that elements in the same column are not overcrowded. Split content into multiple columns if necessary to prevent overflow.
-4. Avoid pages with too few elements. Expand content where needed to ensure an appropriate balance.
-5. If certain columns contain only images without text, center the images on the page.
-6. Consider the aspect ratio of images:
-7. If the aspect ratio exceeds 2:1, the image should span multiple columns in multi-column layouts rather than appearing in a single column.
-8. The first page should include the title and author information.
-9. The last page should serve as a summary page. 
-Output the final code in Markdown format as <SlidevCode.md>. Ensure the code is clean, adheres to the Slidev grammar, and satisfies all specified layout requirements.
-""" 
+SCHEMA:
+[
+  {
+    "title": "Slide Title",
+    "layout": "bullet_points",
+    "content": ["point 1", "point 2"],
+    "image_path": "images/filename.png"
+  }
+]
+"""
 
 # --- SLIDEV TEMPLATES ---
 SLIDEV_GRAMMAR = """

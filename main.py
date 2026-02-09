@@ -1,3 +1,4 @@
+import json
 import os
 import chromadb
 # 1. Changed import from ChatGroq to ChatOpenAI
@@ -7,6 +8,10 @@ from langchain_groq import ChatGroq
 from RAG import RAGEngine
 from SlideGeneration import SlideGenerationModule
 import weave # Add this if you want to use weave.init()
+
+
+
+
 
 def main():
     # Initialize Weave (Newer/Better than just setting env vars)
@@ -41,21 +46,18 @@ def main():
         print(f"Warning: {pdf_path} not found. Proceeding with existing DB data.")
 
     # 7. Define Topic and Run
-    topic = "Explain the stages of the framework"
-    print(f"\n--- Generating Slides for: '{topic}' ---\n")
+    topic = "Explain the framework"
+    
+    # CRITICAL: Lower k_text and k_image to stay under 30k token limit!
+    print(f"--- Querying RAG (Reducing context to avoid 413 error)")
+    rag_result = rag.query(topic, k_text=2, k_image=1) 
     
     try:
-        final_code = slide_gen.generate_slides(topic)
+        print("--- [WORKFLOW] Running Multi-Agent Generation...")
+        final_output = slide_gen.generate_slides(topic)
         
-        # Save Output
-        output_file = "slides.md"
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(final_code)
-            
-        print(f"\nSuccess! Slidev code saved to '{output_file}'")
-        print("\n--- Preview of Generated Code ---\n")
-        print(final_code[:500] + "...\n(truncated)")
-        #print("\nCheck W&B dashboard for execution traces.")
+        # This now uses the new cleaned logic above
+        slide_gen.save_as_pptx(final_output, "Presentation.pptx")
         
     except Exception as e:
         print(f"Error during generation: {e}")
