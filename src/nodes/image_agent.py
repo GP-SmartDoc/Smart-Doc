@@ -1,6 +1,6 @@
 from langchain.messages import SystemMessage, HumanMessage
 from src.config.model import model
-import src.config.prompts as prompts
+import src.config.summarization_prompts as prompts
 import json
 
 

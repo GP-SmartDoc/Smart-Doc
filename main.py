@@ -4,7 +4,8 @@ import sys
 import chromadb
 from src.config.model import model
 from src.vector_store.RAG import RAGEngine
-from src.graphs.question_answering_module import QuestionAnsweringModule
+from src.graphs.summary_graph import SummarizationModule
+from src.graphs.qa_graph import QuestionAnsweringModule
 
 # ----------------------------
 # Intent Detection
@@ -36,8 +37,9 @@ def main():
         # 2. RAG Engine
         rag = RAGEngine(client)
 
-        # 3. QA Module (use the class, not module!)
+        # 3. Initialize QA and Summary modules
         qa_module = QuestionAnsweringModule(retriever=rag, model=model)
+        summary_module = SummarizationModule(retriever=rag, model=model)
 
         print("System Ready.\n")
 
@@ -101,7 +103,7 @@ def main():
                 # Intent Routing
                 # ----------------------------
                 if intent == "summary":
-                    final_answer = qa_module.invoke(question)
+                    final_answer = summary_module.invoke(question)
                     print("\n" + "#" * 16 + " DOCUMENT SUMMARY " + "#" * 16)
 
                 elif intent == "visualization":
@@ -120,6 +122,7 @@ def main():
 
             except Exception as e:
                 print(f"An error occurred while processing the request: {e}")
+
 
 # ----------------------------
 # Run the main function
