@@ -7,27 +7,13 @@ from langchain_groq import ChatGroq
 
 from RAG import RAGEngine
 from SlideGeneration import SlideGenerationModule
-import weave # Add this if you want to use weave.init()
 
 
 
 
 
 def main():
-    # Initialize Weave (Newer/Better than just setting env vars)
-    #weave.init("gamer7dragon817-ain-shams-university/slide-generator-demo") 
-
     print("--- Initializing Slide Generation System")
-    
-    # FIX: Point ChatOpenAI to the W&B Inference Endpoint
-    """llm = ChatOpenAI(
-        model="meta-llama/Llama-4-Scout-17B-16E-Instruct",
-        temperature=0,
-        # IMPORTANT: Use the W&B Inference URL
-        base_url="https://api.inference.wandb.ai/v1", 
-        # Pass your W&B API Key here (or ensure OPENAI_API_KEY is actually your W&B key)
-        api_key="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" 
-    )"""
 
     # 4. Initialize Database & RAG
     client = chromadb.PersistentClient(path="./chroma_db")   
