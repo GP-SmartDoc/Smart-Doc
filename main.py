@@ -6,7 +6,10 @@ from src.config.model import model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
+from src.graphs.visualize_graph import generate_slides
 from langchain.messages import SystemMessage, HumanMessage
+
+from src.utils.pptx import save_as_pptx
 
 # ----------------------------
 # Model-driven Intent Detection
@@ -49,7 +52,7 @@ def main():
         # 3. Initialize QA and Summary modules
         qa_module = QuestionAnsweringModule(retriever=rag, model=model)
         summary_module = SummarizationModule(retriever=rag, model=model)
-
+        visualization_module = lambda prompt: generate_slides(rag, prompt)
         print("System Ready.\n")
     except Exception as e:
         print(f"Initialization Error: {e}")
@@ -117,11 +120,9 @@ def main():
                     final_answer = summary_module.invoke(question)
                     print("\n" + "#" * 16 + " DOCUMENT SUMMARY " + "#" * 16)
                 elif intent == "visualization":
-                    final_answer = (
-                        "Visualization pipeline is not implemented yet.\n"
-                        "However, the system successfully detected visualization intent."
-                    )
+                    final_answer = visualization_module(question)
                     print("\n" + "#" * 14 + " VISUALIZATION " + "#" * 14)
+                    save_as_pptx(final_answer,"Presentation.pptx")  # Save the generated slides as PPTX
                 else:  # QA
                     final_answer = qa_module.invoke(question)
                     print("\n" + "#" * 20 + " ANSWER " + "#" * 20)
@@ -129,7 +130,8 @@ def main():
                 # ----------------------------
                 # Print Result
                 # ----------------------------
-                print(final_answer)
+                if intent != "visualization":
+                    print(final_answer)
                 print("#" * 48 + "\n")
 
             except Exception as e:
