@@ -40,7 +40,7 @@ def generate_slides(rag,prompt:str)->str:
     text_content = retrieved_data.get("text")
 
     retrieved_text = "\n".join(text_content)
-    retrieved_images = retrieved_data.get("images")
+    retrieved_images = retrieved_data.get("paths")
     
     # --- CRITICAL FIX: Copy images to local 'images/' folder ---
     # This fixes the absolute path/backslash error in Slidev

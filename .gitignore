@@ -3,6 +3,8 @@
 models/
 blob_storage/
 chroma_db/
+Images/
+pdfs/
 src/config/__pycache__/
 src/config/__init__.py
 src/graphs/__pycache__/

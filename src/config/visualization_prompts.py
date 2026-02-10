@@ -49,11 +49,16 @@ ensuring it adheres to the specified requirements and formatting conventions. Yo
 # UPDATED: Added Requirement #1 to force relative paths and forward slashes
 # UPDATE THIS IN SlideGeneration.py
 CG_USER_PROMPT = """
-You are a JSON Architect. Your task is to structure slide data.
+You are a JSON Architect.
+AVAILABLE IMAGES (use each at most once, in order):
+<ImageList>
+
 RULES:
-1. The "content" list should ONLY contain text bullets.
-2. The "image_path" should be a SEPARATE key outside the content list.
-3. Use the exact filenames provided (e.g., "images/diagram1.png").
+1. Each slide may have AT MOST one image.
+2. Use images in order: slide 1 → image 1, slide 2 → image 2.
+3. DO NOT reuse images.
+4. If slides > images, omit image_path.
+5. image_path MUST be exactly one of the provided paths.
 
 JSON SCHEMA:
 [

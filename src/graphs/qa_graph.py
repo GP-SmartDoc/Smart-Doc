@@ -51,7 +51,7 @@ class QuestionAnsweringModule:
 
     def invoke(self, question: str, intent: str = "qa"):
         """
-        intent: "qa" for full QA, "summary" for fast summary only
+        intent: "qa" for full QA,
         """
 
         retrieved = self.retriever.query(question, k_text=6, k_image=4)
@@ -72,8 +72,10 @@ class QuestionAnsweringModule:
         # ---------------- FAST SUMMARY MODE ----------------
         if intent == "summary":
             final_summary = self.summarizer.invoke(question)
-            return final_summary
+            return {"Answer": final_summary}
 
         # ---------------- FULL QA MODE ----------------
         result = self.app.invoke(state)
-        return result["final_answer"]
+        return {
+            "Answer": result["final_answer"]  # ✅ ALWAYS dict
+        }

@@ -89,10 +89,15 @@ def receive_message(data: dict):
     ##########################################
 
     if mode == "qa":
-        reply = qa_module.invoke(user_msg)
+        result = qa_module.invoke(user_msg)
+        print("##########################################")
+        print("QA TYPE:", type(result), result)
+        reply = result["Answer"][12:-2]
+
     elif mode == "summarize":
         result = summary_module.invoke(user_msg)
-        reply = result.get("summary", str(result)) if isinstance(result, dict) else str(result)
+        reply = result['Answer']
+       
     elif mode == "viz":
         reply = visualization_module(user_msg)
         save_as_pptx(reply, "generated_slides.pptx")

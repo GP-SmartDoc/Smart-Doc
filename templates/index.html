@@ -154,7 +154,7 @@
         <option value="qa">Question Answer</option>
         <option value="summarize">Summarize</option>
         <!-- <option value="slides">Slide Generation</option> -->
-        <option value="viz">Visualization</option>
+        <option value="viz">Slide Generation</option>
       </select>
 
       <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
@@ -177,7 +177,7 @@
 
       const msg = document.createElement("div");
       msg.className = "message";
-      msg.textContent = text + " (" + selectedMode + ")";
+      msg.textContent = text;
       messages.appendChild(msg);
 
       textInput.value = "";

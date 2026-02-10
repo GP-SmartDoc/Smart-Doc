@@ -258,26 +258,31 @@ class RAGEngine:
             retrieved text chunks and retrieved image paths
         """
         text_res = self.__text_collection.query(
-            query_texts=[prompt],
-            n_results=k_text
-        )
+        query_texts=[prompt],
+        n_results=k_text
+    )
 
         img_res = self.__image_collection.query(
             query_texts=[prompt],
             n_results=k_image,
-            include=["uris","metadatas"]
+            include=["uris", "metadatas"]
         )
-        
+
         encoded_images = []
         image_captions = []
+        paths = []   # ✅ NEW
+
         for uri, meta in zip(
             img_res.get("uris", [[]])[0],
-            img_res.get("metadatas", [[]])[0]):
+            img_res.get("metadatas", [[]])[0]
+        ):
             encoded_images.append(encode_image_from_path(uri))
             image_captions.append(meta.get("caption", ""))
+            paths.append(uri)   
 
         return {
             "text": text_res.get("documents", [[]])[0],
             "images": encoded_images,
-            "image_captions": image_captions
+            "image_captions": image_captions,
+            "paths": paths     
         }
