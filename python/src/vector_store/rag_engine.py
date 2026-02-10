@@ -65,7 +65,7 @@ class RAGEngine:
             chunk_size=400,
             chunk_overlap=50
         )
-
+        
         # ---------------- YOLO ----------------
         self.__yolo = YOLO("./models/yolo11n_doc_layout.pt")
 

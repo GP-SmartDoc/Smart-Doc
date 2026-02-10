@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 import json 
 
-import python.src.config.qa_prompts as qa_prompts
+import src.config.qa_prompts as qa_prompts
 from src.config.model import model
 from src.utils.json import clean_json_string
 
