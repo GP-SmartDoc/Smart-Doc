@@ -2,11 +2,12 @@ from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
 
-from src.nodes.question_answering.general_agent import general_agent
-from src.nodes.question_answering.text_agent import text_agent
-from src.nodes.question_answering.image_agent import image_agent
-from src.nodes.question_answering.critical_agent import critical_agent
-from src.nodes.question_answering.qa_agent import qa_agent
+from nodes.question_answering_2.general_agent import general_agent
+from nodes.question_answering_2.text_agent import text_agent
+from nodes.question_answering_2.image_agent import image_agent
+from nodes.question_answering_2.critical_agent import critical_agent
+from nodes.question_answering_2.summarizing_agent import summarizing_agent
+from src.graphs.summary_graph import SummarizationModule
 
 class QAState(TypedDict):
     llm_calls: Annotated[int, operator.add]
@@ -25,23 +26,26 @@ class QuestionAnsweringModule:
         self.retriever = retriever
         self.model = model
 
+        # Summarization module
+        self.summarizer = SummarizationModule(retriever, model)
+
         # QA StateGraph
         g = StateGraph(QAState)
 
         # QA flow nodes
         g.add_node("general", lambda s: general_agent(s, self.model))
+        g.add_node("critical", lambda s: critical_agent(s, self.model))
         g.add_node("text", lambda s: text_agent(s, self.model))
         g.add_node("image", lambda s: image_agent(s, self.model))
-        g.add_node("critical", lambda s: critical_agent(s, self.model))
-        g.add_node("final", lambda s: qa_agent(s, self.model))
+        g.add_node("summarizer", lambda s: summarizing_agent(s, self.model))
 
         g.add_edge(START, "general")
-        g.add_edge("general", "text")
-        g.add_edge("general", "image")
-        g.add_edge("text", "image")  
-        g.add_edge("image", "critical")
-        g.add_edge("critical", "final")
-        g.add_edge("final", END)
+        g.add_edge("general", "critical")
+        g.add_edge("critical", "text")
+        g.add_edge("critical", "image")  
+        g.add_edge("text", "summarizer")
+        g.add_edge("image", "summarizer")
+        g.add_edge("summarizer", END)
 
         self.app = g.compile()
 
