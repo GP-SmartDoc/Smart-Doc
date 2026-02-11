@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>SmartDoc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0f1117;
+      font-family: Arial, sans-serif;
+      color: #e5e7eb;
+    }
+
+    .chat-box {
+      width: 90%;
+      height: 90%;
+      background: #1a1d25;
+      border-radius: 14px;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 14px;
+      background: #111318;
+      text-align: center;
+      font-weight: bold;
+      color: #7dd3fc;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .message {
+      background: #2563eb;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      max-width: fit-content;
+      word-wrap: break-word;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background: #2d3748;
+      color: #e5e7eb;
+      align-self: flex-start;
+    }
+
+    .input-area {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-top: 1px solid #2a2e39;
+      gap: 8px;
+      background: #111318;
+    }
+
+    .upload-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: #2a2e39;
+      color: #9ca3af;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: #1f2937;
+      color: white;
+    }
+
+    .send-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .send-btn:hover,
+    .upload-btn:hover {
+      opacity: 0.8;
+    }
+
+    .file-msg {
+      background: #374151;
+      color: #d1d5db;
+      padding: 6px 10px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+
+    .messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .messages::-webkit-scrollbar-track {
+      background: #111318;
+    }
+
+    .messages::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+
+    .messages::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="chat-box">
+    <div class="header">SmartDoc</div>
+
+    <div class="messages" id="messages">
+      <div class="message bot">Hello 👋 How can I help you?</div>
+    </div>
+
+    <div class="input-area">
+      <button class="upload-btn" onclick="fileInput.click()">+</button>
+
+      <input type="file" id="fileInput" />
+
+      <select id="modeSelect" class="text-input" style="flex:0 0 140px;">
+        <option value="qa">Question Answer</option>
+        <option value="summarize">Summarize</option>
+        <!-- <option value="slides">Slide Generation</option> -->
+        <option value="viz">Slide Generation</option>
+      </select>
+
+      <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
+
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+
+  </div>
+
+  <script>
+    const messages = document.getElementById("messages");
+    const textInput = document.getElementById("textInput");
+    const fileInput = document.getElementById("fileInput");
+
+    async function sendMessage() {
+      const text = textInput.value.trim();
+      if (!text) return;
+
+      const selectedMode = document.getElementById("modeSelect").value;
+
+      const msg = document.createElement("div");
+      msg.className = "message";
+      msg.textContent = text;
+      messages.appendChild(msg);
+
+      textInput.value = "";
+      messages.scrollTop = messages.scrollHeight;
+
+      // send to backend
+      const res = await fetch("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, mode: selectedMode })
+      });
+
+      const data = await res.json();
+
+      // bot reply
+      const reply = document.createElement("div");
+      reply.className = "message bot";
+      reply.textContent = data.reply;
+      messages.appendChild(reply);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+
+
+
+    fileInput.addEventListener("change", async function () {
+      if (this.files.length === 0) return;
+
+      const file = this.files[0];
+
+      const fileMsg = document.createElement("div");
+      fileMsg.className = "file-msg";
+      fileMsg.textContent = "📎 " + file.name;
+      messages.appendChild(fileMsg);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // send file to fastapi
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      const reply = document.createElement("div");
+      reply.className = "message bot";
+      reply.textContent = data.status;
+      messages.appendChild(reply);
+
+      this.value = "";
+    });
+
+
+    textInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+  </script>
+
+</body>
+
+</html>
