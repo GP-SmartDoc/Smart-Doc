@@ -1,6 +1,6 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
-import src.config.visualization_prompts as prompts
+import config.slide_generation_prompts as prompts
 from src.config.model import model
 import os
 
