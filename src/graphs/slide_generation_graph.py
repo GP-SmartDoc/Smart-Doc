@@ -3,12 +3,12 @@ import shutil
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain.messages import AnyMessage, HumanMessage, AIMessage
 
-from src.nodes.visualization.text_summarizer_agent import Text_Summarizer
-from src.nodes.visualization.image_captioner_agent import Image_Captioner
-from src.nodes.visualization.code_generator_agent import Code_Generator
-from src.nodes.visualization.page_reviewer_agent import Page_Reviewer
-from src.nodes.visualization.code_reviewer_agent import Code_Reviewer
-from src.nodes.visualization.code_generator_reviewed_agent import Code_Generator_Reviewed
+from src.nodes.slide_generation.text_summarizer_agent import Text_Summarizer
+from src.nodes.slide_generation.image_captioner_agent import Image_Captioner
+from src.nodes.slide_generation.code_generator_agent import Code_Generator
+from src.nodes.slide_generation.page_reviewer_agent import Page_Reviewer
+from src.nodes.slide_generation.code_reviewer_agent import Code_Reviewer
+from src.nodes.slide_generation.code_generator_reviewed_agent import Code_Generator_Reviewed
 from src.states.SGState import SlideGenerationGraphState
 
 
