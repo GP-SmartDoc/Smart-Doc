@@ -6,7 +6,7 @@ from src.config.model import model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
-from graphs.slide_generation_graph import generate_slides
+from src.graphs.slide_generation_graph import generate_slides
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
