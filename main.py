@@ -2,6 +2,8 @@
 import os
 import sys
 import chromadb
+import re
+import textwrap
 from src.config.model import model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
@@ -90,13 +92,11 @@ def receive_message(data: dict):
 
     if mode == "qa":
         result = qa_module.invoke(user_msg)
-        print("##########################################")
-        print("QA TYPE:", type(result), result)
-        reply = result["Answer"][12:-2]
+        clean_answer = result["Answer"][12:-2]
 
     elif mode == "summarize":
         result = summary_module.invoke(user_msg)
-        reply = result['Answer']
+        clean_answer = result['Answer']
        
     elif mode == "viz":
         reply = visualization_module(user_msg)
@@ -104,6 +104,43 @@ def receive_message(data: dict):
         reply = "Visualization generated and saved as 'generated_slides.pptx'."
     else:
         reply = f"You said: {user_msg}"
+    
+    if mode in ["qa"]:
+        answer = clean_answer.strip()
+
+        # Replace escaped newlines with actual newlines
+        answer = answer.replace("\\n", "\n")
+
+        # Ensure numbered lists start on a new line
+        answer = re.sub(r'(?<!\d)(\d+)\.', r'\n\1.', answer)
+
+        # Replace "*" bullets with "•" and ensure single newline before each
+        answer = re.sub(r'^\s*\*\s*', r'• ', answer, flags=re.MULTILINE)
+
+        # Remove excessive blank lines (more than 2)
+        answer = re.sub(r'\n{3,}', r'\n\n', answer)
+
+        reply = answer.strip()
+
+    if mode == "summarize":
+        answer = clean_answer.strip()
+
+        # 1. Replace escaped newlines with spaces
+        answer = answer.replace("\\n", " ")
+
+        # 2. Fix line breaks in the middle of numbers or model names (e.g., Qwen 2.\n5 → Qwen 2.5)
+        answer = re.sub(r'(\b\d)\.\s*\n\s*(\d)', r'\1.\2', answer)
+
+        # 3. Remove multiple spaces
+        answer = re.sub(r'\s+', ' ', answer)
+
+        # 4. Optionally, split into logical paragraphs (2 sentences per paragraph)
+        sentences = re.split(r'(?<=[.!?]) +', answer)
+        paragraphs = [" ".join(sentences[i:i+2]) for i in range(0, len(sentences), 2)]
+        formatted_answer = "\n\n".join(paragraphs)
+
+        # 5. Strip leading/trailing spaces
+        reply = formatted_answer.strip()
 
     return {"reply": reply}
 

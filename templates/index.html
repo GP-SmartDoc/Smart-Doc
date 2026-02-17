@@ -195,7 +195,7 @@
       // bot reply
       const reply = document.createElement("div");
       reply.className = "message bot";
-      reply.textContent = data.reply;
+      reply.innerHTML = data.reply.replace(/\n/g, "<br>");
       messages.appendChild(reply);
       messages.scrollTop = messages.scrollHeight;
     }

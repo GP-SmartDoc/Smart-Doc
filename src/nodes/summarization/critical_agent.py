@@ -29,7 +29,7 @@ def critical_agent(state: dict, model):
             "image": state.get("image_answer", "")
         }
 
-    print("[DEBUG] Critical analysis:", analysis)
+    #print("[DEBUG] Critical analysis:", analysis)
 
     return {
         "cross_modal_analysis": analysis,

@@ -87,7 +87,7 @@ class RAGEngine:
             "Page-footer", "List-item"
         }
 
-        print("YOLO layout model classes:", self.__yolo.model.names)
+        #print("YOLO layout model classes:", self.__yolo.model.names)
 
     def add_txt(self, file_path):
         abs_path = os.path.abspath(file_path)

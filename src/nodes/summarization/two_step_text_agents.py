@@ -58,7 +58,7 @@ def text_modality_agent(state: dict, model):
         SystemMessage(content=system_prompt),
         HumanMessage(content=json.dumps(payload))
     ])
-    print("[DEBUG] Text summary:", resp.content)
+    #print("[DEBUG] Text summary:", resp.content)
     return {
         out_key: resp.content,
         "llm_calls": 1
