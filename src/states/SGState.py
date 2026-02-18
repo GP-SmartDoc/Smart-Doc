@@ -8,7 +8,7 @@ class SlideGenerationGraphState(TypedDict):
     #user_question:str
     retrieved_text:str
     retrieved_images:list[str] # <-- ?????
-
+    document:str
     Text_Summarizer_output:str
     Image_Captioner_output:str
     Code_Generator_output:str # without review

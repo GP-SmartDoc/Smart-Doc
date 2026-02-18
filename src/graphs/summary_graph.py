@@ -12,6 +12,7 @@ class SummarizerState(TypedDict):
     llm_calls: Annotated[int, operator.add]
     intent: str
     user_question: str
+    document: str
     retrieved_text_chunks: list
     retrieved_images: list
     image_captions: list
@@ -48,13 +49,14 @@ class SummarizationModule:
 
         self.app = g.compile()
 
-    def invoke(self, question: str):
-        retrieved = self.retriever.query(question, k_text=6, k_image=4)
+    def invoke(self, question: str, document: str = "all"):
+        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
 
         state = {
         "llm_calls": 0,
         "intent": "summary",
         "user_question": question,
+        "document": document,
         "retrieved_text_chunks": retrieved.get("text", []),
         "retrieved_images": retrieved.get("images", []),
         "text_chunk_summaries": [],

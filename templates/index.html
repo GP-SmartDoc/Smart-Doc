@@ -157,6 +157,10 @@
         <option value="viz">Slide Generation</option>
       </select>
 
+      <select id="pdfSelect" class="text-input" style="flex:0 0 180px;">
+        <option value="all">All Documents</option>
+      </select>
+
       <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
 
       <button class="send-btn" onclick="sendMessage()">➤</button>
@@ -168,12 +172,39 @@
     const messages = document.getElementById("messages");
     const textInput = document.getElementById("textInput");
     const fileInput = document.getElementById("fileInput");
+    const pdfSelect=document.getElementById("pdfSelect");
+
+    async function loadPDFs(){
+
+      const res=await fetch("/documents");
+
+      const data=await res.json();
+
+
+      pdfSelect.innerHTML='<option value="all">All Documents</option>';
+
+
+      data.documents.forEach(doc=>{
+
+        const option=document.createElement("option");
+
+        option.value=doc;
+
+        option.textContent=doc;
+
+        pdfSelect.appendChild(option);
+
+      });
+    }
+
+    loadPDFs();
 
     async function sendMessage() {
       const text = textInput.value.trim();
       if (!text) return;
 
       const selectedMode = document.getElementById("modeSelect").value;
+      const documentName=pdfSelect.value;
 
       const msg = document.createElement("div");
       msg.className = "message";
@@ -187,7 +218,7 @@
       const res = await fetch("/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: selectedMode })
+        body: JSON.stringify({ message: text, mode: selectedMode ,document: documentName})
       });
 
       const data = await res.json();
@@ -221,7 +252,7 @@
         method: "POST",
         body: formData
       });
-
+      loadPDFs();
       const data = await res.json();
 
       const reply = document.createElement("div");

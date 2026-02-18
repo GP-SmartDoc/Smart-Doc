@@ -31,11 +31,11 @@ builder.add_edge("Code_Generator_Reviewed", END)
 
 sg_module = builder.compile()
 
-def generate_slides(rag,prompt:str)->str:
+def generate_slides(rag,prompt:str, document: str = "all")->str:
     """
     Main entry point: Queries RAG, copies images to local folder, then runs generation.
     """
-    retrieved_data = rag.query(prompt, k_text=5, k_image=5)
+    retrieved_data = rag.query(prompt, k_text=5, k_image=5, document=document)
     
     text_content = retrieved_data.get("text")
 
@@ -74,6 +74,7 @@ def generate_slides(rag,prompt:str)->str:
         "llm_calls": 0,
         "retrieved_text": retrieved_text,
         "retrieved_images": local_image_paths, # Pass the CLEAN local paths
+        "document": document,
         "Text_Summarizer_output": "",
         "Image_Captioner_output": "",
         "Code_Generator_output": "",

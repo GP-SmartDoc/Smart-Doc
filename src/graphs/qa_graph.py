@@ -12,6 +12,7 @@ class QAState(TypedDict):
     llm_calls: Annotated[int, operator.add]
     intent: str
     user_question: str
+    document: str
     retrieved_text_chunks: list
     retrieved_images: list
     image_captions: list
@@ -45,17 +46,18 @@ class QuestionAnsweringModule:
 
         self.app = g.compile()
 
-    def invoke(self, question: str, intent: str = "qa"):
+    def invoke(self, question: str, document: str = "all"):
         """
         intent: "qa" for full QA,
         """
 
-        retrieved = self.retriever.query(question, k_text=6, k_image=4)
+        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
 
         state: QAState = {
             "llm_calls": 0,
-            "intent": intent,
+            "intent": "qa",
             "user_question": question,
+            "document": document, 
             "retrieved_text_chunks": retrieved.get("text", []),
             "retrieved_images": retrieved.get("images", []),
             "image_captions": retrieved.get("image_captions", []),
