@@ -1,10 +1,10 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
 import config.slide_generation_prompts as prompts
-from src.config.model import model
+from config.model import model
 import os
 
-from src.utils.image import encode_image_from_path
+from utils.image import encode_image_from_path
 
 def Image_Captioner(state: dict):
     # 1. Get Image Filenames to show the LLM

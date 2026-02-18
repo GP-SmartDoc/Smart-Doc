@@ -3,7 +3,7 @@ from pptx.util import Inches
 import json
 import os
 import re
-from src.utils.json import clean_json_string
+from utils.strings import clean_json_string
 
 def save_as_pptx(raw_llm_output, output_path="GP_Presentation.pptx"):
     #print(f"\n--- [RENDER] Starting PPTX Generation ---")

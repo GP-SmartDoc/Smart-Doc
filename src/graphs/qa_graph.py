@@ -2,11 +2,11 @@ from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
 
-from src.nodes.question_answering.general_agent import general_agent
-from src.nodes.question_answering.text_agent import text_agent
-from src.nodes.question_answering.image_agent import image_agent
-from src.nodes.question_answering.critical_agent import critical_agent
-from src.nodes.question_answering.qa_agent import qa_agent
+from nodes.question_answering.general_agent import general_agent
+from nodes.question_answering.text_agent import text_agent
+from nodes.question_answering.image_agent import image_agent
+from nodes.question_answering.critical_agent import critical_agent
+from nodes.question_answering.qa_agent import qa_agent
 
 class QAState(TypedDict):
     llm_calls: Annotated[int, operator.add]

@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
 import config.slide_generation_prompts as prompts
-from src.config.model import model
+from config.model import model
 
 def Code_Generator(state: dict):
     image_list = "\n".join(

@@ -6,6 +6,10 @@ from langchain_ollama import ChatOllama
 
 load_dotenv()  # load .env file
 
+# =============================== 
+# DEFAULT MODEL
+# ===============================
+
 MODEL_BACKEND = os.environ.get("MODEL_BACKEND", "groq").lower()
 
 if MODEL_BACKEND == "groq":
@@ -23,3 +27,14 @@ elif MODEL_BACKEND == "ollama":
     )
 else:
     raise ValueError(f"Unsupported MODEL_BACKEND: {MODEL_BACKEND}")
+
+# =============================== 
+# OTHER MODELS
+# ===============================
+
+visualization_model = ChatGroq(
+        model=os.getenv(
+            "VISUALIZATION_MODEL", "qwen/qwen3-32b"
+        ),
+        temperature=float(os.getenv("MODEL_TEMPERATURE", 0)),
+    )

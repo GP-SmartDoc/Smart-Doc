@@ -1,6 +1,6 @@
 # import chromadb
 
-# from src.vector_store.rag_engine import RAGEngine
+# from vector_store.rag_engine import RAGEngine
 
 # __all__ = ["rag"]
 

@@ -2,10 +2,10 @@ from click import prompt
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
-from src.nodes.summarization.summarization_agent import summarization_agent
-from src.nodes.summarization.critical_agent import critical_agent
-from src.nodes.summarization.two_step_text_agents import text_micro_agent, text_modality_agent
-from src.nodes.summarization.two_step_image_agents import image_micro_agent, image_modality_agent
+from nodes.summarization.summarization_agent import summarization_agent
+from nodes.summarization.critical_agent import critical_agent
+from nodes.summarization.two_step_text_agents import text_micro_agent, text_modality_agent
+from nodes.summarization.two_step_image_agents import image_micro_agent, image_modality_agent
 
 
 class SummarizerState(TypedDict):

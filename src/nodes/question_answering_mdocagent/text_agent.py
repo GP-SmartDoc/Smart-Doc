@@ -1,9 +1,9 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 import json 
 
-import src.config.qa_prompts as qa_prompts
-from src.config.model import model
-from src.utils.json import clean_json_string
+import config.qa_prompts as qa_prompts
+from config.model import model
+from utils.strings import clean_json_string
 
 def text_agent(state:dict):
     critical_agent_output = json.loads(clean_json_string(state.get("ca_output", "")))

@@ -2,9 +2,9 @@ from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessag
 import base64
 import json
 
-import src.config.qa_prompts as qa_prompts
-from src.config.model import model
-from src.utils.json import clean_json_string
+import config.qa_prompts as qa_prompts
+from config.model import model
+from utils.strings import clean_json_string
 
 def image_agent(state:dict):
     # The critical agents returns a json

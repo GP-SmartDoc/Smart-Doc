@@ -2,10 +2,10 @@
 import os
 import sys
 import chromadb
-from src.config.model import model
-from src.vector_store.RAG import RAGEngine
-from src.graphs.summary_graph import SummarizationModule
-from src.graphs.qa_graph import QuestionAnsweringModule
+from config.model import model
+from vector_store.RAG import RAGEngine
+from graphs.summary_graph import SummarizationModule
+from graphs.qa_graph import QuestionAnsweringModule
 from graphs.slide_generation_graph import generate_slides
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 
-from src.utils.pptx import save_as_pptx
+from utils.pptx import save_as_pptx
 
 
 

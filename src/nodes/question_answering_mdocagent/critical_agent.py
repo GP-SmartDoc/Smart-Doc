@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
-import src.config.qa_prompts as qa_prompts
-from src.config.model import model
+import config.qa_prompts as qa_prompts
+from config.model import model
 
 def critical_agent(state:dict):
     

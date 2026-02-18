@@ -6,7 +6,7 @@ def draw_diagrams(descriptions:str) -> str:
 
     '''
     description of diagrams should be in this form :
-    {
+    {  
         {
             "type" : "...",
             "description" : "..."
@@ -17,7 +17,7 @@ def draw_diagrams(descriptions:str) -> str:
         }
     }
     '''
-    
+
     '''
         mermaid_diagrams = []
         for each type, description in descriptions:

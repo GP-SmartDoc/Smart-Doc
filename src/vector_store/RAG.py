@@ -18,7 +18,7 @@ from huggingface_hub import hf_hub_download, snapshot_download
 
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
-from src.utils.image import encode_image_from_path
+from utils.image import encode_image_from_path
 
 class RAGEngine:
     """
