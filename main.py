@@ -45,7 +45,31 @@ User Input:
         return "qa"  # fallback default
     return intent
 
+# ----------------------------
+# Model-driven Intent Detection
+# ----------------------------
+def detect_summary_intent_model(user_input: str) -> str:
+    """
+    Ask the LLM to classify the user input intent.
+    Returns one of: 'TLDR', 'Detailed summary', or 'Default summary'.
+    """
+    prompt = f"""
+Determine the intent of the following user input.
+Return ONLY one word: 'TLDR', 'Detailed summary', or  'Default summary'.
 
+User Input:
+\"\"\"{user_input}\"\"\"
+"""
+    resp = model.invoke([
+        SystemMessage(content="You are an assistant that classifies user intent."),
+        HumanMessage(content=prompt)
+    ])
+    
+    # Normalize response
+    intent = resp.content.strip().lower()
+    if intent not in ["TLDR", "Detailed summary", "Default summary"]:
+        return "Default summary"  # fallback default
+    return intent
 
 
 # ----------------------------
@@ -64,10 +88,8 @@ print("--- Initializing Smart Doc System ---")
 try:
     # 1. ChromaDB Client
     client = chromadb.PersistentClient(path="./chroma_db")
-
     # 2. RAG Engine
     rag = RAGEngine(client)
-
     # 3. Initialize QA and Summary modules
     qa_module = QuestionAnsweringModule(retriever=rag, model=model)
     summary_module = SummarizationModule(retriever=rag, model=model)
@@ -106,7 +128,8 @@ def receive_message(data: dict):
         clean_answer = result["Answer"][12:-2]
         reply = format_qa_output(clean_answer)
     elif mode == "summary":
-        result = summary_module.invoke(question=user_msg, document=document)
+        summary_mode = detect_summary_intent_model(user_msg)
+        result = summary_module.invoke(question=user_msg, document=document, summary_intent=summary_mode)
         clean_answer = result['Answer']
         reply = format_summarize_output(clean_answer)
     elif mode == "slide_generation":

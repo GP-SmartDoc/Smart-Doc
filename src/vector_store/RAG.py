@@ -5,6 +5,7 @@ import os
 import uuid
 import torch  
 import hashlib
+import shutil
 
 from chromadb.utils import embedding_functions
 from chromadb.utils.data_loaders import ImageLoader
@@ -22,7 +23,9 @@ class RAGEngine:
     def __init__(self, chroma_client: chromadb.ClientAPI):
 
         self.__client = chroma_client
-
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.__device = device
+        print(f"Using device: {self.__device}")
         self.__blob_storage_path = "./blob_storage"
         os.makedirs(self.__blob_storage_path, exist_ok=True)
 
@@ -34,12 +37,13 @@ class RAGEngine:
         # ---------------- EMBEDDERS ----------------
 
         self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-MiniLM-L6-v2"
+            model_name="./models/all-MiniLM-L6-v2",
+            device=self.__device
         )
 
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
             model_name="ViT-B-32",
-            device="cpu"
+            device=self.__device
         )
 
         self.__image_loader = ImageLoader()
@@ -76,20 +80,9 @@ class RAGEngine:
         # ---------------- YOLO ----------------
 
         self.__yolo = YOLO("./models/yolo11n_doc_layout.pt")
-
+        self.__yolo.to(self.__device)
 
         # ---------------- IMAGE CAPTIONING ----------------
-
-        self.__caption_processor = BlipProcessor.from_pretrained(
-            "./models/blip-image-captioning-base"
-        )
-
-        self.__caption_model = BlipForConditionalGeneration.from_pretrained(
-            "./models/blip-image-captioning-base"
-        )
-
-        self.__caption_model.eval()
-
 
         # ---------------- IGNORED CLASSES ----------------
 
@@ -124,7 +117,7 @@ class RAGEngine:
         stored_path = os.path.join(self.__documents_path, filename)
 
         if not os.path.exists(stored_path):
-            import shutil
+            
             shutil.copy(file_path, stored_path)
 
         # use stored path instead of original path
@@ -183,7 +176,7 @@ class RAGEngine:
 
             page = pdf[page_index]
 
-            pix = page.get_pixmap(dpi=200)
+            pix = page.get_pixmap(dpi=160)
 
             page_img = Image.open(
 
@@ -195,7 +188,7 @@ class RAGEngine:
             page_area = page_img.width * page_img.height
 
 
-            results = self.__yolo(page_img, conf=0.35)
+            results = self.__yolo(page_img, conf=0.5,device=self.__device)
 
 
             if not results:
@@ -243,10 +236,6 @@ class RAGEngine:
 
                 crop.save(img_path)
 
-
-                caption = self._caption_image(crop)
-
-
                 image_id = str(uuid.uuid4())
 
 
@@ -261,9 +250,7 @@ class RAGEngine:
 
                     metadatas=[{
 
-                        "source": img_path,
-
-                        "caption": caption,
+                        "source": img_path,                       
 
                         "page": page_index,
 
@@ -274,74 +261,8 @@ class RAGEngine:
                 )
 
 
-                # TEXT COLLECTION (caption)
-
-
-                self.__text_collection.add(
-
-                    documents=[caption],
-
-                    ids=[
-
-                        f"{filename}_p{page_index}_fig{det_id}_caption"
-
-                    ],
-
-                    metadatas=[{
-
-                        "page": page_index,
-
-                        "document": filename,  
-
-                        "source": img_path
-
-                    }]
-
-                )
-
-
         print(f"PDF indexed correctly: {filename}")
-
-
-
-    # =====================================================
-    # IMAGE CAPTION
-    # =====================================================
-
-
-    def _caption_image(self, pil_image):
-
-        inputs = self.__caption_processor(
-
-            images=pil_image,
-
-            return_tensors="pt"
-        )
-
-
-        with torch.no_grad():
-
-            out = self.__caption_model.generate(
-
-                **inputs,
-
-                max_new_tokens=50
-
-            )
-
-
-        caption = self.__caption_processor.decode(
-
-            out[0],
-
-            skip_special_tokens=True
-
-        )
-
-
-        return caption
-
-
+  
 
     # =====================================================
     # QUERY WITH DOCUMENT FILTER
@@ -354,9 +275,9 @@ class RAGEngine:
 
         prompt,
 
-        k_text=5,
+        k_text=6,
 
-        k_image=3,
+        k_image=4,
 
         document=None
 
@@ -401,8 +322,6 @@ class RAGEngine:
 
         encoded_images = []
 
-        image_captions = []
-
         paths = []
 
 
@@ -418,12 +337,6 @@ class RAGEngine:
             encoded_images.append(
 
                 encode_image_from_path(uri)
-            )
-
-
-            image_captions.append(
-
-                meta.get("caption", "")
             )
 
 
@@ -447,11 +360,6 @@ class RAGEngine:
             "images":
 
             encoded_images,
-
-
-            "image_captions":
-
-            image_captions,
 
 
             "paths":
@@ -481,5 +389,3 @@ class RAGEngine:
         ]
 
         return sorted(docs)
-
-

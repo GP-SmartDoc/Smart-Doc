@@ -11,11 +11,11 @@ from src.nodes.summarization.two_step_image_agents import image_micro_agent, ima
 class SummarizerState(TypedDict):
     llm_calls: Annotated[int, operator.add]
     intent: str
+    summary_intent: str
     user_question: str
     document: str
     retrieved_text_chunks: list
     retrieved_images: list
-    image_captions: list
     text_summary: str
     image_summary: str
     cross_modal_analysis: dict
@@ -49,12 +49,13 @@ class SummarizationModule:
 
         self.app = g.compile()
 
-    def invoke(self, question: str, document: str = "all"):
-        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
+    def invoke(self, question: str, document: str = "all",summary_intent: str = "Default summary") -> dict:
+        retrieved = self.retriever.query(question, k_text=10, k_image=4, document=document)
 
         state = {
-        "llm_calls": 0,
+        "llm_calls": 1,
         "intent": "summary",
+        "summary_intent": summary_intent,
         "user_question": question,
         "document": document,
         "retrieved_text_chunks": retrieved.get("text", []),

@@ -15,7 +15,6 @@ class QAState(TypedDict):
     document: str
     retrieved_text_chunks: list
     retrieved_images: list
-    image_captions: list
     text_answer: str
     image_answer: str
     cross_modal_analysis: dict
@@ -51,16 +50,15 @@ class QuestionAnsweringModule:
         intent: "qa" for full QA,
         """
 
-        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
+        retrieved = self.retriever.query(question, k_text=10, k_image=4, document=document)
 
         state: QAState = {
-            "llm_calls": 0,
+            "llm_calls": 1,
             "intent": "qa",
             "user_question": question,
             "document": document, 
             "retrieved_text_chunks": retrieved.get("text", []),
             "retrieved_images": retrieved.get("images", []),
-            "image_captions": retrieved.get("image_captions", []),
             "text_answer": "",
             "image_answer": "",
             "cross_modal_analysis": {},

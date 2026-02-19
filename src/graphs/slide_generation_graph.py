@@ -35,7 +35,7 @@ def generate_slides(rag,prompt:str, document: str = "all")->str:
     """
     Main entry point: Queries RAG, copies images to local folder, then runs generation.
     """
-    retrieved_data = rag.query(prompt, k_text=5, k_image=5, document=document)
+    retrieved_data = rag.query(prompt, k_text=20, k_image=5, document=document)
     
     text_content = retrieved_data.get("text")
 

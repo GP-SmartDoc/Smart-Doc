@@ -18,7 +18,7 @@
     }
 
     .chat-box {
-      width: 90%;
+      width: 65%;
       height: 90%;
       background: #1a1d25;
       border-radius: 14px;
@@ -61,13 +61,16 @@
 
     .input-area {
       display: flex;
-      align-items: center;
       padding: 10px;
+      align-items: center;  
+      margin: 5px;
       border-top: 1px solid #2a2e39;
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
       gap: 8px;
       background: #111318;
     }
-
     .upload-btn {
       width: 34px;
       height: 34px;
@@ -182,7 +185,7 @@
 
       <input type="file" id="fileInput" />
 
-      <select id="pdfSelect" class="text-input" style="flex:0 0 180px;">
+      <select id="pdfSelect" class="text-input" style="flex:0 0 120px;">
         <option value="all">All Documents</option>
       </select>
 
@@ -269,23 +272,33 @@
       fileMsg.className = "file-msg";
       fileMsg.textContent = "📎 " + file.name;
       messages.appendChild(fileMsg);
+      // Show loading animation
+      const typing = document.createElement("div");
+      typing.className = "message bot typing";
+      typing.innerHTML = "<span></span><span></span><span></span>";
+      messages.appendChild(typing);
+      messages.scrollTop = messages.scrollHeight;
 
       const formData = new FormData();
       formData.append("file", file);
 
       // send file to fastapi
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-      });
-      loadPDFs();
-      const data = await res.json();
+      try {
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+        loadPDFs();
+        const data = await res.json();
 
-      const reply = document.createElement("div");
-      reply.className = "message bot";
-      reply.textContent = data.status;
-      messages.appendChild(reply);
-
+      // Replace animation with result
+        typing.classList.remove("typing");
+        typing.textContent = data.status;
+        messages.scrollTop = messages.scrollHeight;
+      } catch (error) {
+        typing.classList.remove("typing");
+        typing.textContent = "❌ Upload failed";
+      }
       this.value = "";
     });
 
