@@ -133,6 +133,38 @@
     .messages::-webkit-scrollbar-thumb:hover {
       background: #4b5563;
     }
+    .typing {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 8px 12px;
+      background: #2d3748;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      background: #9ca3af;
+      border-radius: 50%;
+      animation: blink 1.4s infinite;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes blink {
+      0% { opacity: .2; }
+      20% { opacity: 1; }
+      100% { opacity: .2; }
+    }
+
   </style>
 </head>
 
@@ -149,13 +181,6 @@
       <button class="upload-btn" onclick="fileInput.click()">+</button>
 
       <input type="file" id="fileInput" />
-
-      <select id="modeSelect" class="text-input" style="flex:0 0 140px;">
-        <option value="qa">Question Answer</option>
-        <option value="summarize">Summarize</option>
-        <!-- <option value="slides">Slide Generation</option> -->
-        <option value="viz">Slide Generation</option>
-      </select>
 
       <select id="pdfSelect" class="text-input" style="flex:0 0 180px;">
         <option value="all">All Documents</option>
@@ -203,7 +228,6 @@
       const text = textInput.value.trim();
       if (!text) return;
 
-      const selectedMode = document.getElementById("modeSelect").value;
       const documentName=pdfSelect.value;
 
       const msg = document.createElement("div");
@@ -212,22 +236,24 @@
       messages.appendChild(msg);
 
       textInput.value = "";
+      // loading animation
+      const typing = document.createElement("div");
+      typing.className = "message bot typing";
+      typing.innerHTML = "<span></span><span></span><span></span>";
+      messages.appendChild(typing);
+
       messages.scrollTop = messages.scrollHeight;
 
       // send to backend
       const res = await fetch("/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: selectedMode ,document: documentName})
+        body: JSON.stringify({ message: text ,document: documentName})
       });
 
       const data = await res.json();
-
-      // bot reply
-      const reply = document.createElement("div");
-      reply.className = "message bot";
-      reply.innerHTML = data.reply.replace(/\n/g, "<br>");
-      messages.appendChild(reply);
+      typing.classList.remove("typing");
+      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
       messages.scrollTop = messages.scrollHeight;
     }
 

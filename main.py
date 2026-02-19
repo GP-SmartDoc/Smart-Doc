@@ -71,7 +71,7 @@ try:
     # 3. Initialize QA and Summary modules
     qa_module = QuestionAnsweringModule(retriever=rag, model=model)
     summary_module = SummarizationModule(retriever=rag, model=model)
-    visualization_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
+    slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
@@ -93,7 +93,9 @@ def list_documents():
 @app.post("/send")
 def receive_message(data: dict):
     user_msg = data.get("message", "")
-    mode = data.get("mode", "qa")  # default to "qa"
+    #mode = data.get("mode", "qa")  # default to "qa"
+    mode = detect_intent_model(user_msg)
+    print(f"Detected intent: {mode}")
     document = data.get("document", "all")  # default to "all"
     ##########################################
     """#########  Call LLM Here Based on Mode ##########"""
@@ -103,14 +105,14 @@ def receive_message(data: dict):
         result = qa_module.invoke(question=user_msg, document=document)
         clean_answer = result["Answer"][12:-2]
         reply = format_qa_output(clean_answer)
-    elif mode == "summarize":
+    elif mode == "summary":
         result = summary_module.invoke(question=user_msg, document=document)
         clean_answer = result['Answer']
         reply = format_summarize_output(clean_answer)
-    elif mode == "viz":
-        reply = visualization_module(user_msg, document=document)
+    elif mode == "slide_generation":
+        reply = slide_generation_module(user_msg, document=document)
         save_as_pptx(reply, "generated_slides.pptx")
-        reply = "Visualization generated and saved as 'generated_slides.pptx'."
+        reply = "Slide generation completed and saved as 'generated_slides.pptx'."
     else:
         reply = f"You said: {user_msg}"
     
@@ -142,38 +144,59 @@ def format_qa_output(raw_text: str) -> str:
 
     # reply = answer.strip()
 
-    answer = raw_text.strip()
+    text = raw_text.strip()
 
-    # Replace escaped newlines with space
-    answer = answer.replace("\\n", " ")
+    # fix escaped newlines
+    text = text.replace("\\n", "\n")
 
-    # Ensure numbered points "1." start on a new line
-    answer = re.sub(r'\s*(\d+)\.\s*', r'\n\1. ', answer)
+    # --------------------
+    # fix broken bold markdown
+    # --------------------
 
-    # Ensure numbered points "(1)" start on a new line
-    answer = re.sub(r'\s*\(\s*(\d+)\s*\)\s*', r'\n(\1) ', answer)
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
 
-    # Convert bullets at start of line to •, ignore hyphens in words
-    answer = re.sub(r'^\s*[\*\-\•]\s+', r'• ', answer, flags=re.MULTILINE)
+    text = re.sub(r'\*(.*?)\*', r'\1', text)
 
-    # Split into sentences while keeping numbering/bullets together
-    sentences = re.split(r'(?<!\d)\.(\s+)', answer)
+    # remove single leftover *
+    text = re.sub(r'\*+', '', text)
 
-    # Rejoin sentences on separate lines
-    formatted_sentences = []
-    for s in sentences:
-        s = s.strip()
-        if not s:
-            continue
-        # Keep numbered points and bullets intact
-        formatted_sentences.append(s if re.match(r'^(\d+\.|\(\d+\)|• )', s) else s + '.')
+    # numbered list: 1.
+    text = re.sub(r'\s*(\d+)\.\s+', r'\n\1. ', text)
 
-    formatted_answer = "\n".join(formatted_sentences)
+    # numbered list: (1)
+    text = re.sub(r'\s*\((\d+)\)\s*', r'\n(\1) ', text)
 
-    # Remove multiple blank lines
-    formatted_answer = re.sub(r'\n{2,}', r'\n\n', formatted_answer)
 
-    return formatted_answer.strip()
+    # --------------------
+    # fix dash bullets 
+    # --------------------
+
+    text = re.sub(r'\s-\s+(?=[A-Z])', r'\n• ', text)
+
+    # --------------------
+    # fix bullet symbols
+    # --------------------
+
+    text = re.sub(r'\s*•\s+', r'\n• ', text)
+
+    # --------------------
+    # clean spacing
+    # --------------------
+
+    text = re.sub(r'\n{2,}', '\n\n', text)
+
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    # --------------------
+    # final cleanup
+    # --------------------
+
+    lines = [line.strip() for line in text.split('\n')]
+
+    text = "\n".join(line for line in lines if line)
+
+    return text.strip()
+
 
 
 
