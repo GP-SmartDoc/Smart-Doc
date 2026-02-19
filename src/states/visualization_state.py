@@ -8,6 +8,8 @@ class DiagramType(str, Enum):
     STATE = "state"
     CLASS = "class"
     ER = "er"
+    PIE = "pie"
+    MINDMAP = "mindmap"
     
 class VisualizationGraphState(TypedDict):
     messages: Annotated[list[str], operator.add]

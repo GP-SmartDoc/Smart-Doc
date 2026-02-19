@@ -117,6 +117,16 @@ SYNTAX_GUIDES = {
             PayPal ..|> PaymentStrategy : implements
             Wallet ..> Currency : uses
     """,
+    DiagramType.PIE: """
+        TYPE: pie chart
+        
+        EXAMPLE:
+        pie title Pets adopted by volunteers
+            "Dogs" : 386
+            "Cats" : 85
+            "Rats" : 15
+
+    """,
     DiagramType.ER: """
         TYPE: ER Diagram
         HEADER: erDiagram
@@ -143,7 +153,7 @@ GUIDELINES:
 2. Labels: If a node label contains special characters (parentheses, brackets, quotes), you MUST wrap the label in double quotes. Example: A["Node (with info)"] --> B.
 3. Clarity: Optimize for readability. Use 'TD' (Top-Down) or 'LR' (Left-Right) orientation appropriately.
 4. Output: Return ONLY the Mermaid markdown code block. Do not include introductory text or explanations.
-
+ 
 SYNTAX GUIDE:
 {syntax}
 <code here>"""
