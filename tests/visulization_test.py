@@ -32,27 +32,50 @@ from states.visualization_state import DiagramType
 
 answer = generate_visualization(
     description= """
-    Organic Search (Google/Bing): 1,450,200
+    Generate an ERD using Crow's Foot notation for a 'Global Airline Fleet & Flight Management System'. The diagram must include accurate primary keys (PK), foreign keys (FK), and data types.
 
-    Direct Traffic: 980,500
+    System Requirements:
 
-    Paid Search (Google Ads): 725,000
+        Airports: Store the 3-letter IATA airport_code (PK), name, and city.
 
-    Social (Instagram/Facebook): 510,100
+        Routes: A route connects two airports. It needs an origin_code (FK) and destination_code (FK). Constraint: An airport can be the origin for many routes and the destination for many routes, but a route must have exactly one origin and one destination.
 
-    Social (TikTok): 480,900
+        Flight Instances (Weak Entity): A Route is just a plan. A FlightInstance represents a specific plane flying a route on a specific date. It is a weak entity dependent on the Route. Its primary key must be a composite key made of the route_id (FK) and the departure_date (TIMESTAMP).
 
-    Email Newsletters: 215,400
+        Aircraft: Store tail_number (PK), model, and capacity. A FlightInstance must be assigned exactly one Aircraft, but an Aircraft can be assigned to zero-to-many FlightInstances over time.
 
-    Affiliate Referrals: 150,200
+        Employees (Self-Referencing): Store employee_id (PK, UUID), name, and role. Include a recursive relationship where an Employee can manage zero-to-many other Employees (e.g., a supervisor_id acting as an FK to employee_id).
 
-    Display Banners: 95,800
+        Crew Assignment (Many-to-Many): Employees are assigned to FlightInstances. Because many employees work on many flights, resolve this many-to-many relationship using an associative/junction table called CrewRoster. This table must include an additional attribute: shift_role (VARCHAR).
 
-    Social (LinkedIn): 12,500
-
-    Offline (QR Codes): 3,200
-
-    SMS Links: 850
+        Bookings & Tickets (One-to-One): A Passenger makes a Booking (PK: booking_reference). Each successful Booking generates exactly one Ticket (PK: ticket_number). A Ticket cannot exist without a Booking.
     """,
-    type=DiagramType.PIE
+    type=DiagramType.ER
 )
+print(answer)
+# answer = generate_visualization(
+#     description= """
+#     Organic Search (Google/Bing): 1,450,200
+
+#     Direct Traffic: 980,500
+
+#     Paid Search (Google Ads): 725,000
+
+#     Social (Instagram/Facebook): 510,100
+
+#     Social (TikTok): 480,900
+
+#     Email Newsletters: 215,400
+
+#     Affiliate Referrals: 150,200
+
+#     Display Banners: 95,800
+
+#     Social (LinkedIn): 12,500
+
+#     Offline (QR Codes): 3,200
+
+#     SMS Links: 850
+#     """,
+#     type=DiagramType.PIE
+# )
