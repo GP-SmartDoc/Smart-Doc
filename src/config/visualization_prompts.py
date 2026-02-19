@@ -130,17 +130,43 @@ SYNTAX_GUIDES = {
     DiagramType.ER: """
         TYPE: ER Diagram
         HEADER: erDiagram
+        Syntax: <first-entity> [<relationship> <second-entity> : <relationship-label>]
         RELATIONS:
+        
         - One to One: ||--||
         - One to Many: ||--o{
         - Many to One: }o--||
         - Many to Many: }o--o{
-        DEFINITIONS:
-        - CUSTOMER ||--o{ ORDER : places
-        - CUSTOMER {
-            string name
-            string email
-        }
+        EXAMPLE WITH ATTRIBUTES AND KEYS
+            erDiagram
+                CAR ||--o{ NAMED-DRIVER : allows
+                CAR {
+                    string registrationNumber PK
+                    string make
+                    string model
+                    string[] parts
+                }
+                PERSON ||--o{ NAMED-DRIVER : is
+                PERSON {
+                    string driversLicense PK "The license #"
+                    string(99) firstName "Only 99 characters are allowed"
+                    string lastName
+                    string phone UK
+                    int age
+                }
+                NAMED-DRIVER {
+                    string carRegistrationNumber PK, FK
+                    string driverLicence PK, FK
+                }
+                MANUFACTURER only one to zero or more CAR : makes
+
+            
+            
+        EXAMPLE WITHOUT ATTRIBUTES
+        erDiagram
+            CUSTOMER ||--o{ ORDER : places
+            ORDER ||--|{ LINE-ITEM : contains
+            CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
     """
 }
 
