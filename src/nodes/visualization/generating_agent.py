@@ -21,6 +21,7 @@ def generating_agent(state: dict):
         SystemMessage(content=system_prompt),
         HumanMessage(content=content)
     ])
+    print("GENERATOR METADATA" ,agent_answer.response_metadata)
     print("GENERATOR", agent_answer.content)
     return {
         "messages": [agent_answer],

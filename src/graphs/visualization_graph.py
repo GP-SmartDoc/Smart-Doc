@@ -8,6 +8,8 @@ from nodes.visualization.regenerating_agent import regenerating_agent
 from nodes.visualization.revising_agent import revising_agent
 from states.visualization_state import VisualizationGraphState, DiagramType
 
+from utils.strings import remove_thinking_from_content
+
 __all__ = ["generate_visualization"]
 
 def should_continue(state: VisualizationGraphState):
@@ -45,4 +47,7 @@ def generate_visualization(type:DiagramType, description:str)->str:
     }
     
     final_state = visualization_module.invoke(initial_state)
-    return final_state.get("regenerator_output", "")
+    if final_state.get("regenerator_output") != "":
+        return remove_thinking_from_content(final_state.get("regenerator_output"))
+    else:
+        return remove_thinking_from_content(final_state.get("generator_output"))

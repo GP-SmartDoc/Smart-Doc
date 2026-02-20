@@ -131,12 +131,13 @@ SYNTAX_GUIDES = {
         TYPE: ER Diagram
         HEADER: erDiagram
         Syntax: <first-entity> [<relationship> <second-entity> : <relationship-label>]
-        RELATIONS:
         
+        RELATIONS:
         - One to One: ||--||
         - One to Many: ||--o{
         - Many to One: }o--||
         - Many to Many: }o--o{
+            
         EXAMPLE WITH ATTRIBUTES AND KEYS
             erDiagram
                 CAR ||--o{ NAMED-DRIVER : allows
@@ -160,13 +161,41 @@ SYNTAX_GUIDES = {
                 }
                 MANUFACTURER only one to zero or more CAR : makes
 
-            
-            
         EXAMPLE WITHOUT ATTRIBUTES
         erDiagram
             CUSTOMER ||--o{ ORDER : places
             ORDER ||--|{ LINE-ITEM : contains
             CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+    """,
+    DiagramType.MINDMAP : """
+        TYPE: Mind Map
+        
+        SYNTAX:
+        mindmap
+            Root
+                A
+                    B
+                    C
+        
+        EXAMPLE:
+        mindmap
+        root((mindmap))
+            Origins
+            Long history
+            ::icon(fa fa-book)
+            Popularisation
+                British popular psychology author Tony Buzan
+            Research
+            On effectiveness<br/>and features
+            On Automatic creation
+                Uses
+                    Creative techniques
+                    Strategic planning
+                    Argument mapping
+            Tools
+            Pen and paper
+            Mermaid
+
     """
 }
 

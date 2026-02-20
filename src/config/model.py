@@ -18,6 +18,7 @@ if MODEL_BACKEND == "groq":
             "GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"
         ),
         temperature=float(os.getenv("MODEL_TEMPERATURE", 0)),
+        # max_tokens=4096
     )
 
 elif MODEL_BACKEND == "ollama":
