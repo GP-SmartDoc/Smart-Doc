@@ -45,32 +45,6 @@ User Input:
         return "qa"  # fallback default
     return intent
 
-# ----------------------------
-# Model-driven Intent Detection
-# ----------------------------
-def detect_summary_intent_model(user_input: str) -> str:
-    """
-    Ask the LLM to classify the user input intent.
-    Returns one of: 'TLDR', 'Detailed summary', or 'Default summary'.
-    """
-    prompt = f"""
-Determine the intent of the following user input.
-Return ONLY one word: 'TLDR', 'Detailed summary', or  'Default summary'.
-
-User Input:
-\"\"\"{user_input}\"\"\"
-"""
-    resp = model.invoke([
-        SystemMessage(content="You are an assistant that classifies user intent."),
-        HumanMessage(content=prompt)
-    ])
-    
-    # Normalize response
-    intent = resp.content.strip().lower()
-    if intent not in ["TLDR", "Detailed summary", "Default summary"]:
-        return "Default summary"  # fallback default
-    return intent
-
 
 # ----------------------------
 # GUI
@@ -128,10 +102,13 @@ def receive_message(data: dict):
         clean_answer = result["Answer"][12:-2]
         reply = format_qa_output(clean_answer)
     elif mode == "summary":
-        summary_mode = detect_summary_intent_model(user_msg)
-        result = summary_module.invoke(question=user_msg, document=document, summary_intent=summary_mode)
+        result = summary_module.invoke(
+            question=user_msg,
+            document=document
+        )
         clean_answer = result['Answer']
         reply = format_summarize_output(clean_answer)
+
     elif mode == "slide_generation":
         reply = slide_generation_module(user_msg, document=document)
         save_as_pptx(reply, "generated_slides.pptx")
