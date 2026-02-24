@@ -134,7 +134,7 @@ def receive_message(data: dict):
         reply = format_summarize_output(clean_answer)
     elif mode == "slide_generation":
         reply = slide_generation_module(user_msg, document=document)
-        save_as_pptx(reply, "generated_slides.pptx")
+        save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
         reply = "Slide generation completed and saved as 'generated_slides.pptx'."
     else:
         reply = f"You said: {user_msg}"

@@ -117,12 +117,15 @@ Summarize the document into a 6-8 slide presentation JSON array.
 <ImageList>
 
 STRICT RULES:
-1. LAYOUT NAMES: You MUST use only: "title_subtitle", "title_content", "three_column", "content_image", "large_image", "title_only".
-2. BULLET POINTS: For "content", output a JSON LIST of strings (e.g., ["point 1", "point 2"]).
-3. FIRST SLIDE: Use "title_subtitle". Shorten authors to "First Author et al."
-4. IMAGE USAGE: Use images from <ImageList> for "content_image" slides. Do not leave all image paths as null.
-5. NO CUSTOM KEYS: Use only "title", "subtitle", "content", "col1", "col2", "col3".
+1. TITLE REQUIREMENT: EVERY slide object MUST have a "title" key with a meaningful string. Do not leave it empty.
+2. LAYOUT VARIETY: Do not repeat "title_content" more than twice. Mix in "three_column" and "content_image" for a more professional look.
+3. TITLE_ONLY RESTRICTION: The "title_only" layout is EXCLUSIVELY for the final "Thank You" slide. Do not use it for content slides.
+4. IMAGE ENFORCEMENT: If you choose "content_image" or "large_image", the "image_path" MUST NOT be null. It must contain a valid path from the <ImageList>.
+5. FIRST SLIDE: Always use "title_subtitle" with both a title and a subtitle.
+6. JSON KEY: Use "layout_name" for the layout type and "image_path" for image references.
+7. THREE COLUMN FORMAT: For "three_column", provide "col1", "col2", and "col3" as simple strings or objects (I will handle both).
 """
+
 
 
 

@@ -3,156 +3,120 @@ import json
 import os
 import re
 import copy
-from lxml import etree
 
-# Semantic Map to help the LLM select the right template slides
+# [cite_start]Mapping to match the order of your layouts.pptx [cite: 12]
 LAYOUT_MAP = {
     "title_subtitle": 0, "title_content": 1, "three_column": 2,
     "content_image": 3, "large_image": 4, "title_only": 5
 }
 
-# Namespaces for PowerPoint XML manipulation
+# PowerPoint XML Namespaces
 NS = {
     'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
-    'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+    'a': 'http://schemas.openxmlformats.org/drawingml/2006/main'
 }
 
-def clean_json_string(raw_str):
-    if not raw_str: return ""
-    # Matches the outermost JSON array to ignore conversational filler
-    match = re.search(r'\[\s*\{.*\}\s*\]', raw_str, re.DOTALL)
-    return match.group(0) if match else ""
-
 def format_value(val):
-    """
-    Handles nested LLM structures. Converts lists or dictionaries 
-    into clean, bulleted strings for the slide.
-    """
+    """Extracts values from dicts (no keys) and merges lists into bullets."""
+    if isinstance(val, dict):
+        merged = []
+        for v in val.values():
+            if isinstance(v, list):
+                merged.extend([str(item) for item in v])
+            else:
+                merged.append(str(v))
+        return "\n".join([f"• {p}" if not p.startswith('•') else p for p in merged])
     if isinstance(val, list):
         return "\n".join([f"• {item}" for item in val])
-    if isinstance(val, dict):
-        # Recursively format dicts (handles nested 'title' and 'content' in columns)
-        parts = []
-        for k, v in val.items():
-            if k.lower() == 'title':
-                parts.append(str(v).upper())
-            else:
-                parts.append(format_value(v))
-        return "\n".join(parts)
-    return str(val)
+    return str(val) if val else ""
 
-def get_deep_value(data, key_to_find):
-    """Recursively search for keys even if nested."""
-    if key_to_find in data: return data[key_to_find]
-    if isinstance(data, dict):
-        for v in data.values():
-            if isinstance(v, dict):
-                res = get_deep_value(v, key_to_find)
-                if res: return res
-    return None
-
-def duplicate_slide(prs, source_index):
-    """Exact deep copy of a slide preserving animations and layout."""
-    source_slide = prs.slides[source_index]
-    dest_slide = prs.slides.add_slide(source_slide.slide_layout)
-
-    # 1. Clear default placeholders but keep structure
-    for shp in list(dest_slide.shapes):
-        dest_slide.shapes._spTree.remove(shp._element)
-
-    # 2. Copy shapes preserving relationships and IDs
-    for element in source_slide.shapes._spTree:
-        new_element = copy.deepcopy(element)
-        # Unique ID generation to prevent corruption
-        if 'id' in new_element.attrib:
-            new_id = str(hash(new_element))[-5:]
-            new_element.attrib['id'] = new_id
-        dest_slide.shapes._spTree.append(new_element)
-
-    # 3. Copy transitions and timing (Animations)
-    slide_elem = source_slide._element
-    for tag in ['transition', 'timing']:
-        node = slide_elem.find(f'./p:{tag}', namespaces=NS)
-        if node is not None:
-            # Append in correct XML order
-            dest_slide._element.append(copy.deepcopy(node))
-
-    # 4. Copy background
-    csld = slide_elem.find('./p:cSld', namespaces=NS)
-    if csld is not None:
-        bg = csld.find('./p:bg', namespaces=NS)
-        if bg is not None:
-            dest_csld = dest_slide._element.find('./p:cSld', namespaces=NS)
-            if dest_csld is not None:
-                dest_csld.insert(0, copy.deepcopy(bg))
-
-    return dest_slide
+def scrub_xml_for_repair(element):
+    """
+    Recursively cleans XML of Relationship IDs AND Extension Lists.
+    This is the ONLY way to keep animations without repair errors.
+    """
+    for node in element.iter():
+        # 1. Remove Relationship attributes (r:id, r:embed)
+        for attr in list(node.attrib):
+            if "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}" in attr:
+                del node.attrib[attr]
+        
+        # 2. Remove Extension Lists (extLst) - these store unique slide IDs 
+        # that cause the Repair prompt in animations/transitions.
+        if node.tag.endswith('extLst'):
+            parent = node.getparent()
+            if parent is not None:
+                parent.remove(node)
+    return element
 
 def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="generated_slides.pptx"):
     if not os.path.exists(template_path): return
     
     prs = Presentation(template_path)
     template_count = len(prs.slides)
-    cleaned_data = clean_json_string(raw_llm_output)
     
-    try:
-        slides_data = json.loads(cleaned_data)
-        for data in slides_data:
-            # FIX 1: Robust layout mapping (check 'layout' and 'layout_name')
-            layout_key = data.get("layout_name", data.get("layout", "title_content"))
-            if layout_key == "content": 
-                layout_key = "content_image" if data.get("image_path") or data.get("image") else "title_content"
-            
-            idx = LAYOUT_MAP.get(layout_key, 1)
-            new_slide = duplicate_slide(prs, idx)
+    match = re.search(r'\[\s*\{.*\}\s*\]', raw_llm_output, re.DOTALL)
+    if not match: return
+    slides_data = json.loads(match.group(0))
 
-            # FIX 2: Better data mapping for tags
-            # Merges root data with 'tags' dict if it exists
-            content_source = data.get("tags", {})
-            content_source.update({k: v for k, v in data.items() if k not in ["tags", "layout", "layout_name", "image", "image_path"]})
+    for data in slides_data:
+        layout_key = data.get("layout_name", data.get("layout", "title_content"))
+        idx = LAYOUT_MAP.get(layout_key, 1)
+        
+        # 1. Add fresh slide and CLEAR default placeholders
+        slide_layout = prs.slide_masters[0].slide_layouts[idx]
+        new_slide = prs.slides.add_slide(slide_layout)
+        for shp in list(new_slide.shapes):
+            new_slide.shapes._spTree.remove(shp._element)
+        
+        # 2. Get template slide instance (where your animations live)
+        template_slide = prs.slides[idx]
+        
+        # 3. Copy Shapes with Scrubbing
+        for shape in template_slide.shapes:
+            clean_shape_el = scrub_xml_for_repair(copy.deepcopy(shape._element))
+            new_slide.shapes._spTree.append(clean_shape_el)
 
-            # --- TAG REPLACEMENT ---
-            for shape in new_slide.shapes:
-                if shape.has_text_frame:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            for key in ["title", "subtitle", "content", "col1", "col2", "col3"]:
-                                val = content_source.get(key)
-                                if val:
-                                    # Uses format_value to handle lists and objects (e.g. nested three_column data)
-                                    formatted_text = format_value(val)
-                                    tag = "{{" + key + "}}"
-                                    if tag in run.text:
-                                        run.text = run.text.replace(tag, formatted_text)
-                            
-                            # Cleanup empty tags leftover by the LLM
-                            if "{{" in run.text and "}}" in run.text:
-                                run.text = re.sub(r'\{\{.*?\}\}', '', run.text)
-            
-            # --- IMAGE REPLACEMENT (Fix 3: Handle 'image' vs 'image_path') ---
-            img_path = data.get("image_path", data.get("image"))
-            if img_path and isinstance(img_path, str) and img_path.strip():
-                # Check for Image in local directory if path is broken
-                if not os.path.exists(img_path):
-                    base_name = os.path.basename(img_path)
-                    img_path = os.path.join("Images", base_name) if os.path.exists(os.path.join("Images", base_name)) else img_path
+        # 4. CRITICAL: Copy Transitions and Animations with DEEP SCRUB
+        template_el = template_slide._element
+        for tag in ['transition', 'timing']:
+            node = template_el.find(f'./p:{tag}', namespaces=NS)
+            if node is not None:
+                # Scrubbing the timing/transition node prevents the Repair error
+                # by removing stale slide-ID references inside the XML.
+                clean_node = scrub_xml_for_repair(copy.deepcopy(node))
+                new_slide._element.append(clean_node)
 
-                if os.path.exists(img_path):
-                    for shape in list(new_slide.shapes):
-                        if "DUMMY" in (shape.name or "").upper():
-                            left, top, width, height = shape.left, shape.top, shape.width, shape.height
-                            new_slide.shapes._spTree.remove(shape._element)
-                            new_slide.shapes.add_picture(img_path, left, top, width, height)
-                            break
+        # 5. Tag Replacement (Case-Insensitive)
+        content_source = {str(k).lower(): v for k, v in data.items() if k not in ["tags", "layout", "layout_name"]}
+        if "tags" in data and isinstance(data["tags"], dict):
+            content_source.update({str(k).lower(): v for k, v in data["tags"].items()})
 
-        # Safe Cleanup of template slides
-        for i in range(template_count - 1, -1, -1):
-            slide_elem = prs.slides._sldIdLst[i]
-            prs.part.drop_rel(slide_elem.rId)
-            prs.slides._sldIdLst.remove(slide_elem)
+        for shape in new_slide.shapes:
+            if shape.has_text_frame:
+                for paragraph in shape.text_frame.paragraphs:
+                    for run in paragraph.runs:
+                        for key in ["title", "subtitle", "content", "col1", "col2", "col3"]:
+                            pattern = re.compile(r'\{\{' + re.escape(key) + r'\}\}', re.IGNORECASE)
+                            if pattern.search(run.text):
+                                run.text = pattern.sub(format_value(content_source.get(key)), run.text)
+                        if "{{" in run.text:
+                            run.text = re.sub(r'\{\{.*?\}\}', '', run.text)
 
-        prs.save(output_path)
-        print(f"Success: Repaired file with animations saved to {output_path}")
+        # 6. Image Replacement (Targets DUMMY placeholders)
+        img_path = data.get("image_path", data.get("image"))
+        if img_path and os.path.exists(img_path):
+            for shape in list(new_slide.shapes):
+                sh_name = (shape.name or "").upper()
+                if "DUMMY" in sh_name or (shape.has_text_frame and "DUMMY" in shape.text.upper()):
+                    l, t, w, h = shape.left, shape.top, shape.width, shape.height
+                    new_slide.shapes._spTree.remove(shape._element)
+                    new_slide.shapes.add_picture(img_path, l, t, w, h)
+                    break
 
-    except Exception as e:
-        print(f"Error: {e}")
+    # 7. Cleanup template slides from the output file
+    for _ in range(template_count):
+        prs.slides._sldIdLst.remove(prs.slides._sldIdLst[0])
+
+    prs.save(output_path)
