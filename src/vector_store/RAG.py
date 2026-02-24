@@ -12,6 +12,8 @@ import os
 import uuid
 import torch  
 
+from langdetect import detect, DetectorFactory
+
 from ultralytics import YOLO
 from pathlib import Path
 from huggingface_hub import hf_hub_download, snapshot_download
@@ -32,8 +34,12 @@ class RAGEngine:
         self.__blob_storage_path = "./blob_storage"
         os.makedirs("./blob_storage", exist_ok=True)
         # ---------------- EMBEDDERS ----------------
-        self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+        self.__english_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="./models/all-MiniLM-L6-v2"
+        )
+
+        self.__arabic_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="Omartificial-Intelligence-Space/GATE-AraBert-v1"
         )
 
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
@@ -44,9 +50,11 @@ class RAGEngine:
         self.__image_loader = ImageLoader()
 
         # ---------------- COLLECTIONS ----------------
-        self.__text_collection = self.__client.get_or_create_collection(
-            name="text_collection",
-            embedding_function=self.__text_embedder
+        self.__ar_collection = self.__client.get_or_create_collection(
+            name="arabic_text", embedding_function=self.__arabic_embedder
+        )
+        self.__en_collection = self.__client.get_or_create_collection(
+            name="english_text", embedding_function=self.__english_embedder
         )
 
         self.__image_collection = self.__client.get_or_create_collection(
@@ -89,18 +97,26 @@ class RAGEngine:
 
         print("YOLO layout model classes:", self.__yolo.model.names)
 
+    def _get_collection(self, text):
+        """Helper to route text based on language"""
+        try:
+            return self.__ar_collection if detect(text) == 'ar' else self.__en_collection
+        except:
+            return self.__en_collection # Default to English if detection fails
+        
     def add_txt(self, file_path):
         abs_path = os.path.abspath(file_path)
-        with open(abs_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
         
-        # Proper Chunking
         chunks = self.__child_splitter.split_text(text)
-        
-        if chunks:
-            ids = [f"{os.path.basename(file_path)}_chunk_{i}" for i in range(len(chunks))]
-            self.__text_collection.add(documents=chunks, ids=ids)
-            print(f"Added {len(chunks)} text chunks from {file_path}")
+        for i, chunk in enumerate(chunks):
+            # Route each chunk to the correct collection
+            target_col = self._get_collection(chunk)
+            target_col.add(
+                documents=[chunk],
+                ids=[f"{os.path.basename(file_path)}_chunk_{i}"]
+            )
         
     def _caption_image(self, pil_image):
         inputs = self.__caption_processor(
@@ -135,7 +151,8 @@ class RAGEngine:
                 child_chunks = self.__child_splitter.split_text(parent)
 
                 for c_id, child in enumerate(child_chunks):
-                    self.__text_collection.add(
+                    target_col = self._get_collection(child)
+                    target_col.add(
                         documents=[child],
                         ids=[f"{filename}_p{page_index}_P{p_id}_C{c_id}"],
                         metadatas=[{"page": page_index}]
@@ -198,7 +215,8 @@ class RAGEngine:
                 )
 
                 # -------- STORE CAPTION AS TEXT --------
-                self.__text_collection.add(
+                target_col = self._get_collection(caption)
+                target_col.add(
                     documents=[caption],
                     ids=[f"{filename}_p{page_index}_fig{det_id}_caption"],
                     metadatas=[{
@@ -226,7 +244,8 @@ class RAGEngine:
             }]
         )
 
-        self.__text_collection.add(
+        target_col = self._get_collection(caption)
+        target_col.add(
             documents=[caption],
             ids=[f"{image_id}_caption"],
             metadatas={
@@ -257,7 +276,10 @@ class RAGEngine:
             a dictionary in the form {"text": list[str], "images":list[str]} conntaining the 
             retrieved text chunks and retrieved image paths
         """
-        text_res = self.__text_collection.query(
+        # Detect prompt language to know which collection to search
+        target_col = self._get_collection(prompt)
+
+        text_res = target_col.query(
         query_texts=[prompt],
         n_results=k_text
     )
