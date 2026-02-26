@@ -1,2 +1,0 @@
-# run this command in terminal (cmd)
-#  uvicorn main:app --reload
