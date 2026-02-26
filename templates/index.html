@@ -189,6 +189,12 @@
         <option value="all">All Documents</option>
       </select>
 
+      <select id="mode" class="text-input" style="flex:0 0 120px;">
+        <option value="qa">QA</option>
+        <option value="summary">Summary</option>
+        <option value="slide_generation">Slide Generation</option>
+        <option value="visualization">Visualization</option>
+      </select>
       <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
 
       <button class="send-btn" onclick="sendMessage()">➤</button>
@@ -232,6 +238,7 @@
       if (!text) return;
 
       const documentName=pdfSelect.value;
+      const mode=document.getElementById("mode").value;
 
       const msg = document.createElement("div");
       msg.className = "message";
@@ -251,7 +258,7 @@
       const res = await fetch("/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text ,document: documentName})
+        body: JSON.stringify({ message: text ,document: documentName,mode: mode})
       });
 
       const data = await res.json();

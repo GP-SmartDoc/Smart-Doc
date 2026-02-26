@@ -8,7 +8,7 @@ def critical_agent(state: dict, model):
     if state.get("cross_modal_analysis"):
         return {"llm_calls": 0}
 
-    intent = state.get("intent", "qa")
+    intent = state.get("intent", "qa")  # default to QA if not specified
     text_data = state.get("text_summary", "")
     image_data = state.get("image_summary", "")
     

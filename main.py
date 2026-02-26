@@ -13,7 +13,7 @@ from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
+from pydantic import BaseModel
 
 from src.utils.pptx import save_as_pptx
 
@@ -52,6 +52,11 @@ User Input:
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+class ChatRequest(BaseModel):
+    message: str
+    document: str
+    mode: str
+
 UPLOAD_FOLDER = "documents"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -87,12 +92,12 @@ def list_documents():
     }
 
 @app.post("/send")
-def receive_message(data: dict):
-    user_msg = data.get("message", "")
-    #mode = data.get("mode", "qa")  # default to "qa"
-    mode = detect_intent_model(user_msg)
-    print(f"Detected intent: {mode}")
-    document = data.get("document", "all")  # default to "all"
+def receive_message(data: ChatRequest):
+    user_msg = data.message
+    mode = data.mode  # default to "qa"
+    #mode = detect_intent_model(user_msg)
+    #print(f"Detected intent: {mode}")
+    document = data.document  # default to "all"
     ##########################################
     """#########  Call LLM Here Based on Mode ##########"""
     ##########################################
@@ -113,6 +118,8 @@ def receive_message(data: dict):
         reply = slide_generation_module(user_msg, document=document)
         save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
         reply = "Slide generation completed and saved as 'generated_slides.pptx'."
+    elif mode == "visualization":
+        reply = "Visualization mode is under development. Please check back later."
     else:
         reply = f"You said: {user_msg}"
     
@@ -236,8 +243,7 @@ async def upload_file(file: UploadFile = File(...)):
         rag.add_pdf(file_path)
         print("PDF successfully indexed.")
     except Exception as e:
-        print(f"Error processing PDF: {e}")
-        return
+        return {"status": f"❌ Upload failed: {str(e)}"}
 
     ##########################################
     """#######  Process File Here  ########"""

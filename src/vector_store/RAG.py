@@ -176,7 +176,7 @@ class RAGEngine:
 
             page = pdf[page_index]
 
-            pix = page.get_pixmap(dpi=160)
+            pix = page.get_pixmap(dpi=200)
 
             page_img = Image.open(
 

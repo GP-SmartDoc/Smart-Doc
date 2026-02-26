@@ -6,6 +6,7 @@ chroma_db/
 Images/
 pdfs/
 generated_slides.pptx
+download_models.py
 documents/
 src/config/__pycache__/
 src/config/__init__.py

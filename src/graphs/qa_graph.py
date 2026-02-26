@@ -50,7 +50,7 @@ class QuestionAnsweringModule:
         intent: "qa" for full QA,
         """
 
-        retrieved = self.retriever.query(question, k_text=10, k_image=4, document=document)
+        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
 
         state: QAState = {
             "llm_calls": 1,
