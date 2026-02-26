@@ -2,18 +2,22 @@
 import os
 import sys
 import chromadb
+
+import re
+import textwrap
 from src.config.model import model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
+
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
-
-from src.utils.pptx import save_as_pptx
+from utils.pptx import save_as_pptx
 
 
 
@@ -23,11 +27,11 @@ from src.utils.pptx import save_as_pptx
 def detect_intent_model(user_input: str) -> str:
     """
     Ask the LLM to classify the user input intent.
-    Returns one of: 'summary', 'visualization', 'qa'.
+    Returns one of: 'summary', 'visualization', 'qa', or 'slide_generation'.
     """
     prompt = f"""
 Determine the intent of the following user input.
-Return ONLY one word: 'summary', 'visualization', or 'qa'.
+Return ONLY one word: 'summary', 'visualization', 'qa', or 'slide_generation'.
 
 User Input:
 \"\"\"{user_input}\"\"\"
@@ -39,11 +43,9 @@ User Input:
     
     # Normalize response
     intent = resp.content.strip().lower()
-    if intent not in ["summary", "visualization", "qa"]:
+    if intent not in ["summary", "visualization", "qa","slide_generation"]:
         return "qa"  # fallback default
     return intent
-
-
 
 
 # ----------------------------
@@ -52,7 +54,12 @@ User Input:
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-UPLOAD_FOLDER = "uploads"
+class ChatRequest(BaseModel):
+    message: str
+    document: str
+    mode: str
+
+UPLOAD_FOLDER = "documents"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ----------------------------
@@ -62,14 +69,12 @@ print("--- Initializing Smart Doc System ---")
 try:
     # 1. ChromaDB Client
     client = chromadb.PersistentClient(path="./chroma_db")
-
     # 2. RAG Engine
     rag = RAGEngine(client)
-
     # 3. Initialize QA and Summary modules
     qa_module = QuestionAnsweringModule(retriever=rag, model=model)
     summary_module = SummarizationModule(retriever=rag, model=model)
-    visualization_module = lambda prompt: generate_slides(rag, prompt)
+    slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
@@ -78,34 +83,155 @@ except Exception as e:
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+# ------------------
+# LIST DOCUMENTS
+# ------------------
+
+@app.get("/documents")
+def list_documents():
+    return {
+    "documents":rag.list_documents()
+    }
 
 @app.post("/send")
-def receive_message(data: dict):
-    user_msg = data.get("message", "")
-    mode = data.get("mode", "qa")  # default to "qa"
-
+def receive_message(data: ChatRequest):
+    user_msg = data.message
+    mode = data.mode  # default to "qa"
+    #mode = detect_intent_model(user_msg)
+    #print(f"Detected intent: {mode}")
+    document = data.document  # default to "all"
     ##########################################
     """#########  Call LLM Here Based on Mode ##########"""
     ##########################################
 
     if mode == "qa":
-        result = qa_module.invoke(user_msg)
-        print("##########################################")
-        print("QA TYPE:", type(result), result)
-        reply = result["Answer"][12:-2]
+        result = qa_module.invoke(question=user_msg, document=document)
+        clean_answer = result["Answer"][12:-2]
+        reply = format_qa_output(clean_answer)
+    elif mode == "summary":
+        result = summary_module.invoke(
+            question=user_msg,
+            document=document
+        )
+        clean_answer = result['Answer']
+        reply = format_summarize_output(clean_answer)
 
-    elif mode == "summarize":
-        result = summary_module.invoke(user_msg)
-        reply = result['Answer']
-       
-    elif mode == "viz":
-        reply = visualization_module(user_msg)
-        save_as_pptx(reply, "generated_slides.pptx")
-        reply = "Visualization generated and saved as 'generated_slides.pptx'."
+    elif mode == "slide_generation":
+        reply = slide_generation_module(user_msg, document=document)
+        save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
+        reply = "Slide generation completed and saved as 'generated_slides.pptx'."
+    elif mode == "visualization":
+        reply = "Visualization mode is under development. Please check back later."
     else:
         reply = f"You said: {user_msg}"
-
+    
     return {"reply": reply}
+
+
+
+def format_qa_output(raw_text: str) -> str:
+    """
+    Format raw QA output to professional style:
+    - Numbered points (1., (1)) start on new lines
+    - Bullets (*, -, •) start on new lines
+    - Each component/action appears on its own line
+    - Sentences are flowing and paragraphs are preserved
+    """
+    # answer = clean_answer.strip()
+
+    # # Replace escaped newlines with actual newlines
+    # answer = answer.replace("\\n", "\n")
+
+    # # Ensure numbered lists start on a new line
+    # answer = re.sub(r'(?<!\d)(\d+)\.', r'\n\1.', answer)
+
+    # # Replace "*" bullets with "•" and ensure single newline before each
+    # answer = re.sub(r'^\s*\*\s*', r'• ', answer, flags=re.MULTILINE)
+
+    # # Remove excessive blank lines (more than 2)
+    # answer = re.sub(r'\n{3,}', r'\n\n', answer)
+
+    # reply = answer.strip()
+
+    text = raw_text.strip()
+
+    # fix escaped newlines
+    text = text.replace("\\n", "\n")
+
+    # --------------------
+    # fix broken bold markdown
+    # --------------------
+
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+
+    text = re.sub(r'\*(.*?)\*', r'\1', text)
+
+    # remove single leftover *
+    text = re.sub(r'\*+', '', text)
+
+    # numbered list: 1.
+    text = re.sub(r'\s*(\d+)\.\s+', r'\n\1. ', text)
+
+    # numbered list: (1)
+    text = re.sub(r'\s*\((\d+)\)\s*', r'\n(\1) ', text)
+
+
+    # --------------------
+    # fix dash bullets 
+    # --------------------
+
+    text = re.sub(r'\s-\s+(?=[A-Z])', r'\n• ', text)
+
+    # --------------------
+    # fix bullet symbols
+    # --------------------
+
+    text = re.sub(r'\s*•\s+', r'\n• ', text)
+
+    # --------------------
+    # clean spacing
+    # --------------------
+
+    text = re.sub(r'\n{2,}', '\n\n', text)
+
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    # --------------------
+    # final cleanup
+    # --------------------
+
+    lines = [line.strip() for line in text.split('\n')]
+
+    text = "\n".join(line for line in lines if line)
+
+    return text.strip()
+
+
+
+
+
+def format_summarize_output(raw_text: str) -> str:
+    answer = raw_text.strip()
+
+    # 1. Replace escaped newlines with spaces
+    answer = answer.replace("\\n", " ")
+
+    # 2. Fix line breaks in the middle of numbers or model names (e.g., Qwen 2.\n5 → Qwen 2.5)
+    answer = re.sub(r'(\b\d)\.\s*\n\s*(\d)', r'\1.\2', answer)
+
+    # 3. Remove multiple spaces
+    answer = re.sub(r'\s+', ' ', answer)
+
+    # 4. Optionally, split into logical paragraphs (2 sentences per paragraph)
+    sentences = re.split(r'(?<=[.!?]) +', answer)
+    paragraphs = [" ".join(sentences[i:i+2]) for i in range(0, len(sentences), 2)]
+    formatted_answer = "\n\n".join(paragraphs)
+
+    # 5. Strip leading/trailing spaces
+    reply = formatted_answer.strip()
+
+    return reply
+
 
 
 
@@ -119,8 +245,7 @@ async def upload_file(file: UploadFile = File(...)):
         rag.add_pdf(file_path)
         print("PDF successfully indexed.")
     except Exception as e:
-        print(f"Error processing PDF: {e}")
-        return
+        return {"status": f"❌ Upload failed: {str(e)}"}
 
     ##########################################
     """#######  Process File Here  ########"""

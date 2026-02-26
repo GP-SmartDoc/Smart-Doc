@@ -1,12 +1,12 @@
 .env
-.env.*
 models/
 blob_storage/
 chroma_db/
 Images/
 pdfs/
 generated_slides.pptx
-uploads/
+download_models.py
+documents/
 src/config/__pycache__/
 src/config/__init__.py
 src/graphs/__pycache__/

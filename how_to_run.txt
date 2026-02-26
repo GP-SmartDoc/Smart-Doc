@@ -1,0 +1,2 @@
+##delete chroma_db,blob_storage, and documents #before run once you pull don't do that again 
+uvicorn main:app --reload

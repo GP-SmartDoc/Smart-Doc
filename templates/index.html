@@ -18,7 +18,7 @@
     }
 
     .chat-box {
-      width: 90%;
+      width: 65%;
       height: 90%;
       background: #1a1d25;
       border-radius: 14px;
@@ -61,13 +61,16 @@
 
     .input-area {
       display: flex;
-      align-items: center;
       padding: 10px;
+      align-items: center;  
+      margin: 5px;
       border-top: 1px solid #2a2e39;
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
       gap: 8px;
       background: #111318;
     }
-
     .upload-btn {
       width: 34px;
       height: 34px;
@@ -133,6 +136,38 @@
     .messages::-webkit-scrollbar-thumb:hover {
       background: #4b5563;
     }
+    .typing {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 8px 12px;
+      background: #2d3748;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      background: #9ca3af;
+      border-radius: 50%;
+      animation: blink 1.4s infinite;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes blink {
+      0% { opacity: .2; }
+      20% { opacity: 1; }
+      100% { opacity: .2; }
+    }
+
   </style>
 </head>
 
@@ -150,13 +185,16 @@
 
       <input type="file" id="fileInput" />
 
-      <select id="modeSelect" class="text-input" style="flex:0 0 140px;">
-        <option value="qa">Question Answer</option>
-        <option value="summarize">Summarize</option>
-        <!-- <option value="slides">Slide Generation</option> -->
-        <option value="viz">Slide Generation</option>
+      <select id="pdfSelect" class="text-input" style="flex:0 0 120px;">
+        <option value="all">All Documents</option>
       </select>
 
+      <select id="mode" class="text-input" style="flex:0 0 120px;">
+        <option value="qa">QA</option>
+        <option value="summary">Summary</option>
+        <option value="slide_generation">Slide Generation</option>
+        <option value="visualization">Visualization</option>
+      </select>
       <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
 
       <button class="send-btn" onclick="sendMessage()">➤</button>
@@ -168,12 +206,39 @@
     const messages = document.getElementById("messages");
     const textInput = document.getElementById("textInput");
     const fileInput = document.getElementById("fileInput");
+    const pdfSelect=document.getElementById("pdfSelect");
+
+    async function loadPDFs(){
+
+      const res=await fetch("/documents");
+
+      const data=await res.json();
+
+
+      pdfSelect.innerHTML='<option value="all">All Documents</option>';
+
+
+      data.documents.forEach(doc=>{
+
+        const option=document.createElement("option");
+
+        option.value=doc;
+
+        option.textContent=doc;
+
+        pdfSelect.appendChild(option);
+
+      });
+    }
+
+    loadPDFs();
 
     async function sendMessage() {
       const text = textInput.value.trim();
       if (!text) return;
 
-      const selectedMode = document.getElementById("modeSelect").value;
+      const documentName=pdfSelect.value;
+      const mode=document.getElementById("mode").value;
 
       const msg = document.createElement("div");
       msg.className = "message";
@@ -181,22 +246,24 @@
       messages.appendChild(msg);
 
       textInput.value = "";
+      // loading animation
+      const typing = document.createElement("div");
+      typing.className = "message bot typing";
+      typing.innerHTML = "<span></span><span></span><span></span>";
+      messages.appendChild(typing);
+
       messages.scrollTop = messages.scrollHeight;
 
       // send to backend
       const res = await fetch("/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, mode: selectedMode })
+        body: JSON.stringify({ message: text ,document: documentName,mode: mode})
       });
 
       const data = await res.json();
-
-      // bot reply
-      const reply = document.createElement("div");
-      reply.className = "message bot";
-      reply.textContent = data.reply;
-      messages.appendChild(reply);
+      typing.classList.remove("typing");
+      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
       messages.scrollTop = messages.scrollHeight;
     }
 
@@ -212,23 +279,33 @@
       fileMsg.className = "file-msg";
       fileMsg.textContent = "📎 " + file.name;
       messages.appendChild(fileMsg);
+      // Show loading animation
+      const typing = document.createElement("div");
+      typing.className = "message bot typing";
+      typing.innerHTML = "<span></span><span></span><span></span>";
+      messages.appendChild(typing);
+      messages.scrollTop = messages.scrollHeight;
 
       const formData = new FormData();
       formData.append("file", file);
 
       // send file to fastapi
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-      });
+      try {
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+        loadPDFs();
+        const data = await res.json();
 
-      const data = await res.json();
-
-      const reply = document.createElement("div");
-      reply.className = "message bot";
-      reply.textContent = data.status;
-      messages.appendChild(reply);
-
+      // Replace animation with result
+        typing.classList.remove("typing");
+        typing.textContent = data.status;
+        messages.scrollTop = messages.scrollHeight;
+      } catch (error) {
+        typing.classList.remove("typing");
+        typing.textContent = "❌ Upload failed";
+      }
       this.value = "";
     });
 

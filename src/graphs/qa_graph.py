@@ -2,19 +2,19 @@ from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
 
-from src.nodes.question_answering.general_agent import general_agent
-from src.nodes.question_answering.text_agent import text_agent
-from src.nodes.question_answering.image_agent import image_agent
-from src.nodes.question_answering.critical_agent import critical_agent
-from src.nodes.question_answering.qa_agent import qa_agent
+from nodes.question_answering.general_agent import general_agent
+from nodes.question_answering.text_agent import text_agent
+from nodes.question_answering.image_agent import image_agent
+from nodes.question_answering.critical_agent import critical_agent
+from nodes.question_answering.qa_agent import qa_agent
 
 class QAState(TypedDict):
     llm_calls: Annotated[int, operator.add]
     intent: str
     user_question: str
+    document: str
     retrieved_text_chunks: list
     retrieved_images: list
-    image_captions: list
     text_answer: str
     image_answer: str
     cross_modal_analysis: dict
@@ -45,20 +45,20 @@ class QuestionAnsweringModule:
 
         self.app = g.compile()
 
-    def invoke(self, question: str, intent: str = "qa"):
+    def invoke(self, question: str, document: str = "all"):
         """
         intent: "qa" for full QA,
         """
 
-        retrieved = self.retriever.query(question, k_text=6, k_image=4)
+        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
 
         state: QAState = {
-            "llm_calls": 0,
-            "intent": intent,
+            "llm_calls": 1,
+            "intent": "qa",
             "user_question": question,
+            "document": document, 
             "retrieved_text_chunks": retrieved.get("text", []),
             "retrieved_images": retrieved.get("images", []),
-            "image_captions": retrieved.get("image_captions", []),
             "text_answer": "",
             "image_answer": "",
             "cross_modal_analysis": {},
