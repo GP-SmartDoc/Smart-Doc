@@ -1,4 +1,4 @@
-from states.visualization_state import DiagramType
+from src.states.visualization_state import DiagramType
 
 SYNTAX_GUIDES = {
     DiagramType.FLOWCHART: """

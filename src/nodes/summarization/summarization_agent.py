@@ -1,8 +1,8 @@
 from langchain.messages import SystemMessage, HumanMessage, AIMessage
-from config.model import model
-import config.summarization_prompts as prompts
+from src.config.model import model
+import src.config.summarization_prompts as prompts
 import json
-from utils.helper import safe_json_parse
+from src.utils.helper import safe_json_parse
 
 MAX_TEXT_CHARS = 4000  # max characters to send to model
 

@@ -1,5 +1,5 @@
 from langchain.messages import SystemMessage, HumanMessage, AIMessage
-import config.qa_prompts as qa_prompts
+import src.config.qa_prompts as qa_prompts
 import json
 
 def qa_agent(state: dict, model):
