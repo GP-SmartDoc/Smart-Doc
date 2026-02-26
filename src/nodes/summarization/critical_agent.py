@@ -1,7 +1,7 @@
 from langchain.messages import SystemMessage, HumanMessage
-from src.config.model import model
-import src.config.summarization_prompts as prompts
-import src.config.qa_prompts as qprompts
+from config.model import model
+import config.summarization_prompts as prompts
+import config.qa_prompts as qprompts
 import json
 
 def critical_agent(state: dict, model):

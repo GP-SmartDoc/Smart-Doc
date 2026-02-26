@@ -1,9 +1,9 @@
 from langchain.messages import SystemMessage, HumanMessage
-from src.config.model import model
-import src.config.summarization_prompts as prompts
-import src.config.qa_prompts as qprompts
+from config.model import model
+import config.summarization_prompts as prompts
+import config.qa_prompts as qprompts
 import json
-from src.utils.json import clean_json_string
+from utils.strings import clean_json_string
 
 def image_micro_agent(state: dict, model):
     captions = state.get("image_captions", [])

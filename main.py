@@ -2,6 +2,7 @@
 import os
 import sys
 import chromadb
+
 import re
 import textwrap
 from src.config.model import model
@@ -9,13 +10,14 @@ from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
+
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from src.utils.pptx import save_as_pptx
+from utils.pptx import save_as_pptx
 
 
 

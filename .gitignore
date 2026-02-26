@@ -1,5 +1,4 @@
 .env
-.env.*
 models/
 blob_storage/
 chroma_db/
