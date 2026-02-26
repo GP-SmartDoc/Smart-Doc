@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from utils.pptx import save_as_pptx
+from src.utils.pptx import save_as_pptx
 
 
 
@@ -75,6 +75,7 @@ try:
     qa_module = QuestionAnsweringModule(retriever=rag, model=model)
     summary_module = SummarizationModule(retriever=rag, model=model)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
+    visualization_module = lambda state: "Visualization module is under development. Please check back later."
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
@@ -121,7 +122,7 @@ def receive_message(data: ChatRequest):
         save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
         reply = "Slide generation completed and saved as 'generated_slides.pptx'."
     elif mode == "visualization":
-        reply = "Visualization mode is under development. Please check back later."
+        reply = visualization_module()
     else:
         reply = f"You said: {user_msg}"
     

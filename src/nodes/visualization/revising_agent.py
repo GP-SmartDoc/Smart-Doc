@@ -1,9 +1,9 @@
 from langchain.messages import SystemMessage, HumanMessage, AIMessage
-from config.model import visualization_model
-import config.visualization_prompts as prompts
-import config.qa_prompts as qprompts
+from src.config.model import visualization_model
+import src.config.visualization_prompts as prompts
+import src.config.qa_prompts as qprompts
 
-from utils.strings import remove_thinking_from_content
+from src.utils.strings import remove_thinking_from_content
 
 def revising_agent(state: dict):
     

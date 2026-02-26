@@ -1,5 +1,5 @@
-from graphs.visualization_graph import generate_visualization
-from states.visualization_state import DiagramType
+from src.graphs.visualization_graph import generate_visualization
+from src.states.visualization_state import DiagramType
 # answer = generate_visualization(
 #     description="""generate a state diagram that describes a video game player.
 #         He is either active, tired, energized, or dead. He is active by default. If he gets 
