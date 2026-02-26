@@ -10,6 +10,7 @@ download_models.py
 pyproject.toml
 documents/
 tests/__pycache__/
+tests/__init__.py
 src/mypackage.egg-info/
 src/config/__pycache__/
 src/config/__init__.py
