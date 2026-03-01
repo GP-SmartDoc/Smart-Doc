@@ -1,4 +1,5 @@
 # main.py
+import json
 import os
 import sys
 import chromadb
@@ -16,9 +17,8 @@ from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-
 from src.utils.pptx import save_as_pptx
-
+from fastapi.responses import JSONResponse
 
 
 # ----------------------------
@@ -108,6 +108,7 @@ def receive_message(data: ChatRequest):
     if mode == "qa":
         result = qa_module.invoke(question=user_msg, document=document)
         clean_answer = result["Answer"][12:-2]
+        #clean_answer = clean_answer.encode().decode('unicode_escape')
         reply = format_qa_output(clean_answer)
     elif mode == "summary":
         result = summary_module.invoke(
@@ -115,6 +116,7 @@ def receive_message(data: ChatRequest):
             document=document
         )
         clean_answer = result['Answer']
+        #clean_answer = clean_answer.encode().decode('unicode_escape')
         reply = format_summarize_output(clean_answer)
 
     elif mode == "slide_generation":
