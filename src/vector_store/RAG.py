@@ -12,6 +12,8 @@ from chromadb.utils.data_loaders import ImageLoader
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from PIL import Image
+from langdetect import detect, DetectorFactory
+
 from ultralytics import YOLO
 from pathlib import Path
 from transformers import BlipProcessor, BlipForConditionalGeneration
@@ -35,10 +37,12 @@ class RAGEngine:
         os.makedirs(self.__documents_path, exist_ok=True)
 
         # ---------------- EMBEDDERS ----------------
+        self.__english_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="./models/all-MiniLM-L6-v2"
+        )
 
-        self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-MiniLM-L6-v2",
-            device=self.__device
+        self.__arabic_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="./models/GATE-AraBert-v1"
         )
 
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
@@ -50,10 +54,11 @@ class RAGEngine:
 
 
         # ---------------- COLLECTIONS ----------------
-
-        self.__text_collection = self.__client.get_or_create_collection(
-            name="text_collection",
-            embedding_function=self.__text_embedder
+        self.__ar_collection = self.__client.get_or_create_collection(
+            name="arabic_text", embedding_function=self.__arabic_embedder
+        )
+        self.__en_collection = self.__client.get_or_create_collection(
+            name="english_text", embedding_function=self.__english_embedder
         )
 
 
@@ -108,6 +113,47 @@ class RAGEngine:
     # =====================================================
     # ADD PDF
     # =====================================================
+        print("YOLO layout model classes:", self.__yolo.model.names)
+
+    def _get_collection(self, text):
+        """Helper to route text based on language"""
+        try:
+            return self.__ar_collection if detect(text) == 'ar' else self.__en_collection
+        except:
+            return self.__en_collection # Default to English if detection fails
+        
+    def add_txt(self, file_path):
+        abs_path = os.path.abspath(file_path)
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+        
+        chunks = self.__child_splitter.split_text(text)
+        for i, chunk in enumerate(chunks):
+            # Route each chunk to the correct collection
+            target_col = self._get_collection(chunk)
+            target_col.add(
+                documents=[chunk],
+                ids=[f"{os.path.basename(file_path)}_chunk_{i}"]
+            )
+        
+    def _caption_image(self, pil_image):
+        inputs = self.__caption_processor(
+            images=pil_image,
+            return_tensors="pt"
+        )
+
+        with torch.no_grad():
+            out = self.__caption_model.generate(
+                **inputs,
+                max_new_tokens=50
+            )
+
+        caption = self.__caption_processor.decode(
+            out[0],
+            skip_special_tokens=True
+        )
+
+        return caption
 
     def add_pdf(self, file_path):
 
@@ -148,10 +194,8 @@ class RAGEngine:
 
 
                 for c_id, child in enumerate(child_chunks):
-
-
-                    self.__text_collection.add(
-
+                    target_col = self._get_collection(child)
+                    target_col.add(
                         documents=[child],
 
                         ids=[
@@ -268,6 +312,14 @@ class RAGEngine:
     # QUERY WITH DOCUMENT FILTER
     # =====================================================
 
+    def add_file(path:str):
+        """
+        TO BE IMPLEMENTED: add any file type, then a specific add fucntion
+            should be called based on file extension. If a file type is unavailible, 
+            such case should be handeled.
+        """
+        print()
+        pass
 
     def query(
 
@@ -295,17 +347,13 @@ class RAGEngine:
 
             }
 
+        target_col = self._get_collection(prompt)
 
-        text_res = self.__text_collection.query(
-
-            query_texts=[prompt],
-
-            n_results=k_text,
-
-            where=where_filter
-
+        text_res = target_col.query(
+        query_texts=[prompt],
+        n_results=k_text,
+        where=where_filter
         )
-
 
         img_res = self.__image_collection.query(
 

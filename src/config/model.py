@@ -29,6 +29,13 @@ elif MODEL_BACKEND == "openai":
         temperature=float(os.getenv("MODEL_TEMPERATURE", 0)),
     )
 
+elif MODEL_BACKEND == "openai":
+    model = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL", "moonshotai/Kimi-K2.5"),
+        openai_api_base=os.getenv("OPENAI_API_BASE", "https://api.inference.wandb.ai/v1"),
+        temperature=float(os.getenv("MODEL_TEMPERATURE", 0)),
+    )
+
 elif MODEL_BACKEND == "ollama":
     model = ChatOllama(
         model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
