@@ -62,15 +62,16 @@
     .input-area {
       display: flex;
       padding: 10px;
-      align-items: center;  
+      align-items: center;
       margin: 5px;
       border-top: 1px solid #2a2e39;
       border-radius: 12px;
       padding: 6px 10px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
       gap: 8px;
       background: #111318;
     }
+
     .upload-btn {
       width: 34px;
       height: 34px;
@@ -119,7 +120,6 @@
       font-size: 14px;
     }
 
-
     .messages::-webkit-scrollbar {
       width: 6px;
     }
@@ -136,6 +136,7 @@
     .messages::-webkit-scrollbar-thumb:hover {
       background: #4b5563;
     }
+
     .typing {
       display: flex;
       gap: 4px;
@@ -163,9 +164,17 @@
     }
 
     @keyframes blink {
-      0% { opacity: .2; }
-      20% { opacity: 1; }
-      100% { opacity: .2; }
+      0% {
+        opacity: .2;
+      }
+
+      20% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: .2;
+      }
     }
 
   </style>
@@ -195,6 +204,14 @@
         <option value="slide_generation">Slide Generation</option>
         <option value="visualization">Visualization</option>
       </select>
+
+      <!-- Summary mode dropdown, hidden initially -->
+      <select id="summaryMode" class="text-input" style="flex:0 0 120px; display:none;">
+        <option value="snapshot">Snapshot</option>
+        <option value="overview">Overview</option>
+        <option value="deepdive">Deep Dive</option>
+      </select>
+
       <input type="text" id="textInput" class="text-input" placeholder="Type a message..." />
 
       <button class="send-btn" onclick="sendMessage()">➤</button>
@@ -206,69 +223,81 @@
     const messages = document.getElementById("messages");
     const textInput = document.getElementById("textInput");
     const fileInput = document.getElementById("fileInput");
-    const pdfSelect=document.getElementById("pdfSelect");
+    const pdfSelect = document.getElementById("pdfSelect");
+    const modeSelect = document.getElementById("mode");
+    const summaryModeSelect = document.getElementById("summaryMode");
 
-    async function loadPDFs(){
+    async function loadPDFs() {
+      const res = await fetch("/documents");
+      const data = await res.json();
 
-      const res=await fetch("/documents");
+      pdfSelect.innerHTML = '<option value="all">All Documents</option>';
 
-      const data=await res.json();
-
-
-      pdfSelect.innerHTML='<option value="all">All Documents</option>';
-
-
-      data.documents.forEach(doc=>{
-
-        const option=document.createElement("option");
-
-        option.value=doc;
-
-        option.textContent=doc;
-
+      data.documents.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc;
+        option.textContent = doc;
         pdfSelect.appendChild(option);
-
       });
     }
 
     loadPDFs();
 
+    // Show/hide summary mode dropdown
+    modeSelect.addEventListener("change", function () {
+      if (modeSelect.value === "summary") {
+        summaryModeSelect.style.display = "block";
+      } else {
+        summaryModeSelect.style.display = "none";
+      }
+    });
+
     async function sendMessage() {
-      const text = textInput.value.trim();
-      if (!text) return;
+  const text = textInput.value.trim();
+  if (!text) return;
 
-      const documentName=pdfSelect.value;
-      const mode=document.getElementById("mode").value;
+  const documentName = pdfSelect.value;
+  const mode = modeSelect.value; // keep mode as selected
 
-      const msg = document.createElement("div");
-      msg.className = "message";
-      msg.textContent = text;
-      messages.appendChild(msg);
+  // Determine summary mode
+  const summaryMode = (mode === "summary") ? summaryModeSelect.value : null;
 
-      textInput.value = "";
-      // loading animation
-      const typing = document.createElement("div");
-      typing.className = "message bot typing";
-      typing.innerHTML = "<span></span><span></span><span></span>";
-      messages.appendChild(typing);
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.textContent = text;
+  messages.appendChild(msg);
 
-      messages.scrollTop = messages.scrollHeight;
+  textInput.value = "";
+  // loading animation
+  const typing = document.createElement("div");
+  typing.className = "message bot typing";
+  typing.innerHTML = "<span></span><span></span><span></span>";
+  messages.appendChild(typing);
 
-      // send to backend
-      const res = await fetch("/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text ,document: documentName,mode: mode})
-      });
+  messages.scrollTop = messages.scrollHeight;
 
-      const data = await res.json();
-      typing.classList.remove("typing");
-      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
-      messages.scrollTop = messages.scrollHeight;
-    }
+  // send to backend
+  const payload = {
+    message: text,
+    document: documentName,
+    mode: mode
+  };
 
+  if (summaryMode) {
+    payload.summary_mode = summaryMode; // <-- send separately
+  }
 
+  const res = await fetch("/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
 
+  const data = await res.json();
+  typing.classList.remove("typing");
+  typing.innerHTML = data.reply.replace(/\n/g, "<br>");
+  messages.scrollTop = messages.scrollHeight;
+}
 
     fileInput.addEventListener("change", async function () {
       if (this.files.length === 0) return;
@@ -279,7 +308,7 @@
       fileMsg.className = "file-msg";
       fileMsg.textContent = "📎 " + file.name;
       messages.appendChild(fileMsg);
-      // Show loading animation
+
       const typing = document.createElement("div");
       typing.className = "message bot typing";
       typing.innerHTML = "<span></span><span></span><span></span>";
@@ -289,7 +318,6 @@
       const formData = new FormData();
       formData.append("file", file);
 
-      // send file to fastapi
       try {
         const res = await fetch("/upload", {
           method: "POST",
@@ -298,7 +326,6 @@
         loadPDFs();
         const data = await res.json();
 
-      // Replace animation with result
         typing.classList.remove("typing");
         typing.textContent = data.status;
         messages.scrollTop = messages.scrollHeight;
@@ -308,7 +335,6 @@
       }
       this.value = "";
     });
-
 
     textInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {

@@ -7,10 +7,6 @@ import json
 def text_micro_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
     detail_level = state.get("detail_level", 2)  # from mode_controller
-    
-    # We retrieve the token_budget but do NOT use it to truncate the input text anymore.
-    # The budget is handled strictly by the final synthesis agent's prompt.
-    token_budget = state.get("token_budget", 300)
 
     all_text = state.get("retrieved_text_chunks", [])
     if not all_text:
@@ -49,7 +45,7 @@ def text_micro_agent(state: dict, model=model):
 
             Text Chunks:
             {merged_text}
-
+            
             Detail Level: {detail_level}
         """)
     ])
