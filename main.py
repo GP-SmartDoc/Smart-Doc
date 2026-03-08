@@ -6,7 +6,8 @@ import chromadb
 
 import re
 import textwrap
-from src.config.model import model
+from src.config.model import text_model as model
+from src.config.model import image_model as v_model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
@@ -72,8 +73,8 @@ try:
     # 2. RAG Engine
     rag = RAGEngine(client)
     # 3. Initialize QA and Summary modules
-    qa_module = QuestionAnsweringModule(retriever=rag, model=model)
-    summary_module = SummarizationModule(retriever=rag, model=model)
+    qa_module = QuestionAnsweringModule(retriever=rag)
+    summary_module = SummarizationModule(retriever=rag)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
     visualization_module = lambda state: "Visualization module is under development. Please check back later."
     print("System Ready.\n")

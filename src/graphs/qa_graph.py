@@ -21,19 +21,42 @@ class QAState(TypedDict):
     final_answer: dict
 
 class QuestionAnsweringModule:
-    def __init__(self, retriever, model):
+    # def __init__(self, retriever, model):
+    #     self.retriever = retriever
+    #     self.model = model
+
+    #     # QA StateGraph
+    #     g = StateGraph(QAState)
+
+    #     # QA flow nodes
+    #     g.add_node("general", lambda s: general_agent(s, self.model))
+    #     g.add_node("text", lambda s: text_agent(s, self.model))
+    #     g.add_node("image", lambda s: image_agent(s, self.model))
+    #     g.add_node("critical", lambda s: critical_agent(s, self.model))
+    #     g.add_node("final", lambda s: qa_agent(s, self.model))
+
+    #     g.add_edge(START, "general")
+    #     g.add_edge("general", "text")
+    #     g.add_edge("general", "image")
+    #     g.add_edge("text", "image")  
+    #     g.add_edge("image", "critical")
+    #     g.add_edge("critical", "final")
+    #     g.add_edge("final", END)
+
+    #     self.app = g.compile()
+    def __init__(self, retriever):
         self.retriever = retriever
-        self.model = model
+        
 
         # QA StateGraph
         g = StateGraph(QAState)
 
         # QA flow nodes
-        g.add_node("general", lambda s: general_agent(s, self.model))
-        g.add_node("text", lambda s: text_agent(s, self.model))
-        g.add_node("image", lambda s: image_agent(s, self.model))
-        g.add_node("critical", lambda s: critical_agent(s, self.model))
-        g.add_node("final", lambda s: qa_agent(s, self.model))
+        g.add_node("general", general_agent)
+        g.add_node("text", text_agent)
+        g.add_node("image", image_agent)
+        g.add_node("critical", critical_agent)
+        g.add_node("final", qa_agent)
 
         g.add_edge(START, "general")
         g.add_edge("general", "text")
@@ -44,7 +67,6 @@ class QuestionAnsweringModule:
         g.add_edge("final", END)
 
         self.app = g.compile()
-
     def invoke(self, question: str, document: str = "all"):
         """
         intent: "qa" for full QA,

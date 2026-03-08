@@ -1,10 +1,10 @@
 from langchain.messages import SystemMessage, HumanMessage
-from src.config.model import model
+from src.config.model import text_model as model
 import src.config.summarization_prompts as prompts
 import src.config.qa_prompts as qprompts
 import json
 
-def text_micro_agent(state: dict, model):
+def text_micro_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
     detail_level = state.get("detail_level", 2)  # from mode_controller
     
@@ -59,7 +59,7 @@ def text_micro_agent(state: dict, model):
         "llm_calls": 1
     }
 
-def text_modality_agent(state: dict, model):
+def text_modality_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
 
     if intent == "summary":

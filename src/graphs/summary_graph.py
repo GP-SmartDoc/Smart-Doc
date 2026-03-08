@@ -68,20 +68,19 @@ def mode_controller(state: SummarizerState):
 # GRAPH MODULE
 # =========================
 class SummarizationModule:
-    def __init__(self, retriever, model):
+    def __init__(self, retriever):
         self.retriever = retriever
-        self.model = model
 
         g = StateGraph(SummarizerState)
  
         # ---------- Nodes ----------
         g.add_node("mode_control", mode_controller)
-        g.add_node("text_micro", lambda s: text_micro_agent(s, self.model))
-        g.add_node("image_micro", lambda s: image_micro_agent(s, self.model))
-        g.add_node("text_merge", lambda s: text_modality_agent(s, self.model))
-        g.add_node("image_merge", lambda s: image_modality_agent(s, self.model))
-        g.add_node("critical", lambda s: critical_agent(s, self.model))
-        g.add_node("final", lambda s: summarization_agent(s, self.model))
+        g.add_node("text_micro", text_micro_agent)
+        g.add_node("image_micro", image_micro_agent)
+        g.add_node("text_merge", text_modality_agent)
+        g.add_node("image_merge", image_modality_agent)
+        g.add_node("critical", critical_agent)
+        g.add_node("final", summarization_agent)
 
         # ---------- Edges ----------
         g.add_edge(START, "mode_control")

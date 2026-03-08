@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
 import src.config.slide_generation_prompts as prompts
-from src.config.model import model
+from src.config.model import image_model as model
 import os
 
 from src.utils.image import encode_image_from_path
