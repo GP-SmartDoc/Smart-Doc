@@ -244,13 +244,22 @@
     loadPDFs();
 
     // Show/hide summary mode dropdown
-    modeSelect.addEventListener("change", function () {
-      if (modeSelect.value === "summary") {
-        summaryModeSelect.style.display = "block";
-      } else {
-        summaryModeSelect.style.display = "none";
-      }
-    });
+    function toggleSummaryMode() {
+  const mode = document.getElementById("mode").value;
+  const summary = document.getElementById("summaryMode");
+
+  if (mode === "summary") {
+    summary.style.display = "block";
+  } else {
+    summary.style.display = "none";
+  }
+  }
+
+    // run when page loads
+    window.addEventListener("DOMContentLoaded", () => {
+  toggleSummaryMode();
+  document.getElementById("mode").addEventListener("change", toggleSummaryMode);
+  });
 
     async function sendMessage() {
   const text = textInput.value.trim();

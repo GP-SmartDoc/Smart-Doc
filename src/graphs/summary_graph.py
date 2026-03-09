@@ -41,7 +41,6 @@ class SummarizationModule:
         g = StateGraph(SummarizerState)
 
         # ---------- Nodes ----------
-        g.add_node("mode_control", mode_controller)
         g.add_node("text_micro", text_micro_agent)
         g.add_node("image_micro", image_micro_agent)
         g.add_node("text_merge", text_modality_agent)
