@@ -1,7 +1,4 @@
-# main.py
-import json
 import os
-import sys
 import chromadb
 
 import re
@@ -20,12 +17,19 @@ from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from src.utils.pptx import save_as_pptx
-from fastapi.responses import JSONResponse
 
+from src.config.model import model
+from src.vector_store.RAG import RAGEngine
+from src.graphs.summary_graph import SummarizationModule
+from src.graphs.qa_graph import QuestionAnsweringModule
+from src.graphs.slide_generation_graph import generate_slides
+from src.utils.pptx import save_as_pptx
+
+# NEW
+from src.memory.chat_memory import ChatMemory
 
 # ----------------------------
-# Model-driven Intent Detection
+# Request Model
 # ----------------------------
 def detect_intent_model(user_input: str) -> str:
     """
@@ -95,12 +99,19 @@ class ChatRequest(BaseModel):
     message: str
     document: str
     mode: str
+    summary_mode: str = "overview"
+
+# ----------------------------
+# App and Templates
+# ----------------------------
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 UPLOAD_FOLDER = "documents"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ----------------------------
-# Main
+# Initialize System
 # ----------------------------
 print("--- Initializing Smart Doc System ---")
 try:
@@ -117,13 +128,15 @@ try:
 except Exception as e:
     print(f"Initialization Error: {e}")
 
+# ----------------------------
+# Routes
+# ----------------------------
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-# ------------------
-# LIST DOCUMENTS
-# ------------------
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
 
 @app.get("/documents")
 def list_documents():
@@ -278,17 +291,156 @@ def format_summarize_output(raw_text: str) -> str:
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     file_path = f"{UPLOAD_FOLDER}/{file.filename}"
+
     try:
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
         rag.add_pdf(file_path)
+
         print("PDF successfully indexed.")
+
+        return {"status": f"✅ {file.filename} uploaded"}
+
     except Exception as e:
         return {"status": f"❌ Upload failed: {str(e)}"}
 
-    ##########################################
-    """#######  Process File Here  ########"""
-    ##########################################
+@app.post("/send")
+def receive_message(data: ChatRequest):
 
-    return {"status": f"✅ {file.filename} uploaded"}
+    user_msg = data.message
+    document = data.document
+    mode = data.mode
+
+    # ----------------------------
+    # Add user message to memory
+    # ----------------------------
+    memory.add("user", user_msg)
+    print("\n--- CHAT MEMORY AFTER USER MESSAGE ---")
+    for i, m in enumerate(memory.history):
+        print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    print("--------------------------------------\n")
+    # Build context-aware question
+    enhanced_question = memory.build_context(user_msg)
+    print("\n--- ENHANCED QUESTION SENT TO MODEL ---")
+    print(enhanced_question)
+    print("---------------------------------------\n")
+    # ----------------------------
+    # QA Mode
+    # ----------------------------
+    if mode == "qa":
+
+        result = qa_module.invoke(
+            question=enhanced_question,
+            document=document
+        )
+
+        clean_answer = result["Answer"][12:-2]
+
+        reply = format_qa_output(clean_answer)
+
+    # ----------------------------
+    # Summary Mode
+    # ----------------------------
+    elif mode == "summary":
+
+        summary_mode = data.summary_mode
+
+        print(f"Invoking summary with mode: {summary_mode}")
+
+        result = summary_module.invoke(
+            question=enhanced_question,
+            document=document,
+            summary_mode=summary_mode
+        )
+
+        clean_answer = result["Answer"]
+
+        reply = format_summarize_output(clean_answer)
+
+    # ----------------------------
+    # Slide Generation
+    # ----------------------------
+    elif mode == "slide_generation":
+
+        reply = slide_generation_module(
+            enhanced_question,
+            document=document
+        )
+
+        save_as_pptx(
+            reply,
+            "layouts.pptx",
+            "generated_slides.pptx"
+        )
+
+        reply = "Slide generation completed and saved as 'generated_slides.pptx'."
+
+    # ----------------------------
+    # Visualization
+    # ----------------------------
+    elif mode == "visualization":
+
+        reply = visualization_module()
+
+    else:
+
+        reply = f"You said: {user_msg}"
+
+    # ----------------------------
+    # Save assistant reply
+    # ----------------------------
+    memory.add("assistant", reply)
+    print("\n--- CHAT MEMORY AFTER ASSISTANT RESPONSE ---")
+    for i, m in enumerate(memory.history):
+        print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    print("--------------------------------------------\n")
+    return {"reply": reply}
+
+# ----------------------------
+# Formatting Utilities
+# ----------------------------
+import re
+
+def format_qa_output(raw_text: str) -> str:
+
+    text = raw_text.strip()
+
+    text = text.replace("\\n", "\n")
+
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+    text = re.sub(r'\*(.*?)\*', r'\1', text)
+    text = re.sub(r'\*+', '', text)
+
+    text = re.sub(r'\s*(\d+)\.\s+', r'\n\1. ', text)
+    text = re.sub(r'\s*\((\d+)\)\s*', r'\n(\1) ', text)
+
+    text = re.sub(r'\s-\s+(?=[A-Z])', r'\n• ', text)
+    text = re.sub(r'\s*•\s+', r'\n• ', text)
+
+    text = re.sub(r'\n{2,}', '\n\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    lines = [line.strip() for line in text.split('\n')]
+
+    return "\n".join(line for line in lines if line).strip()
+
+
+def format_summarize_output(raw_text: str) -> str:
+
+    answer = raw_text.strip()
+
+    answer = answer.replace("\\n", " ")
+
+    answer = re.sub(r'(\b\d)\.\s*\n\s*(\d)', r'\1.\2', answer)
+
+    answer = re.sub(r'\s+', ' ', answer)
+
+    sentences = re.split(r'(?<=[.!?]) +', answer)
+
+    paragraphs = [
+        " ".join(sentences[i:i+2])
+        for i in range(0, len(sentences), 2)
+    ]
+
+    return "\n\n".join(paragraphs).strip()
