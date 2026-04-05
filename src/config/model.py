@@ -20,7 +20,7 @@ if MODEL_BACKEND == "groq":
     text_model = ChatGroq(
         model=os.getenv(
             "TEXT_MODEL",
-            "meta-llama/llama-4-scout-17b-16e-instruct"
+            "llama-3.3-70b-versatile"
         ),
         temperature=TEMPERATURE
     )

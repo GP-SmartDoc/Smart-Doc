@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <title>SmartDoc</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true });
+  </script>
   <style>
     body {
       margin: 0;
@@ -167,8 +172,17 @@
       20% { opacity: 1; }
       100% { opacity: .2; }
     }
+    .mermaid {
+      background: #1a1d25;
+      padding: 15px;
+      border-radius: 10px;
+    }
 
+    .mermaid svg {
+      background-color: #1a1d25 !important;
+    }
   </style>
+  
 </head>
 
 <body>
@@ -263,7 +277,26 @@
 
       const data = await res.json();
       typing.classList.remove("typing");
-      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
+      // check if reply contains mermaid diagram
+      if (data.reply.includes("```mermaid")) {
+
+          // remove ```mermaid wrapper
+          const mermaidCode = data.reply
+              .replace("```mermaid", "")
+              .replace("```", "")
+              .trim();
+
+          typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+
+          // render diagram
+          mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
+
+      } else {
+
+          // normal text response
+          typing.innerHTML = data.reply.replace(/\n/g, "<br>");
+
+      }
       messages.scrollTop = messages.scrollHeight;
     }
 

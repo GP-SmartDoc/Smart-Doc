@@ -12,6 +12,8 @@ from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
+from src.graphs.visualization_graph import generate_visualization
+from src.states.visualization_state import DiagramType
 
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
@@ -48,7 +50,41 @@ User Input:
         return "qa"  # fallback default
     return intent
 
+def visualization_module(prompt: str):
+    """
+    Calls visualization graph and returns diagram text.
+    Default diagram type can be changed depending on user prompt.
+    """
+    
+    # simple auto-detection of diagram type from text
+    text = prompt.lower()
 
+    if "flowchart" in text:
+        diagram_type = DiagramType.FLOWCHART
+        
+    elif "state diagram" in text or "state machine" in text:
+        diagram_type = DiagramType.STATE
+        
+    elif "class diagram" in text:
+        diagram_type = DiagramType.CLASS
+        
+    elif "er" in text or "entity relationship" in text:
+        diagram_type = DiagramType.ER
+        
+    elif "pie" in text or "chart" in text:
+        diagram_type = DiagramType.PIE
+        
+    elif "mindmap" in text or "mind map" in text:
+        diagram_type = DiagramType.MINDMAP
+        
+    else:
+        # default fallback
+        diagram_type = DiagramType.MINDMAP
+
+    return generate_visualization(
+        type=diagram_type,
+        description=prompt
+    )
 # ----------------------------
 # GUI
 # ----------------------------
@@ -76,7 +112,7 @@ try:
     qa_module = QuestionAnsweringModule(retriever=rag)
     summary_module = SummarizationModule(retriever=rag)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
-    visualization_module = lambda state: "Visualization module is under development. Please check back later."
+    #visualization_module = lambda state: "Visualization module is under development. Please check back later."
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
@@ -125,7 +161,7 @@ def receive_message(data: ChatRequest):
         save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
         reply = "Slide generation completed and saved as 'generated_slides.pptx'."
     elif mode == "visualization":
-        reply = visualization_module()
+        reply = visualization_module(user_msg)
     else:
         reply = f"You said: {user_msg}"
     
