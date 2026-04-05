@@ -234,155 +234,271 @@
   </div>
 
   <script>
-    const messages = document.getElementById("messages");
-    const textInput = document.getElementById("textInput");
-    const fileInput = document.getElementById("fileInput");
-    const pdfSelect = document.getElementById("pdfSelect");
-    const modeSelect = document.getElementById("mode");
-    const summaryModeSelect = document.getElementById("summaryMode");
 
-    async function loadPDFs() {
-      const res = await fetch("/documents");
-      const data = await res.json();
+  const messages = document.getElementById("messages");
+  const textInput = document.getElementById("textInput");
+  const fileInput = document.getElementById("fileInput");
+  const pdfSelect = document.getElementById("pdfSelect");
+  const modeSelect = document.getElementById("mode");
+  const summaryModeSelect = document.getElementById("summaryMode");
 
-      pdfSelect.innerHTML = '<option value="all">All Documents</option>';
 
-      data.documents.forEach(doc => {
-        const option = document.createElement("option");
-        option.value = doc;
-        option.textContent = doc;
-        pdfSelect.appendChild(option);
+  async function loadPDFs() {
+
+    const res = await fetch("/documents");
+    const data = await res.json();
+
+    pdfSelect.innerHTML = '<option value="all">All Documents</option>';
+
+    data.documents.forEach(doc => {
+
+      const option = document.createElement("option");
+
+      option.value = doc;
+      option.textContent = doc;
+
+      pdfSelect.appendChild(option);
+
+    });
+
+  }
+
+  loadPDFs();
+
+
+  // show summary dropdown only when summary selected
+  function toggleSummaryMode() {
+
+    if (modeSelect.value === "summary") {
+
+      summaryModeSelect.style.display = "block";
+
+    } else {
+
+      summaryModeSelect.style.display = "none";
+
+    }
+
+  }
+
+  // run when page loads
+  window.addEventListener("DOMContentLoaded", () => {
+
+    toggleSummaryMode();
+
+    modeSelect.addEventListener("change", toggleSummaryMode);
+
+  });
+
+
+
+  async function sendMessage() {
+
+    const text = textInput.value.trim();
+
+    if (!text) return;
+
+
+    const documentName = pdfSelect.value;
+
+    const mode = modeSelect.value;
+
+    const summaryMode = (mode === "summary") ? summaryModeSelect.value : null;
+
+
+    // show user message
+
+    const msg = document.createElement("div");
+
+    msg.className = "message";
+
+    msg.textContent = text;
+
+    messages.appendChild(msg);
+
+
+    textInput.value = "";
+
+
+    // typing animation
+
+    const typing = document.createElement("div");
+
+    typing.className = "message bot typing";
+
+    typing.innerHTML = "<span></span><span></span><span></span>";
+
+    messages.appendChild(typing);
+
+
+    messages.scrollTop = messages.scrollHeight;
+
+
+    // build payload
+
+    const payload = {
+
+      message: text,
+
+      document: documentName,
+
+      mode: mode
+
+    };
+
+
+    if (summaryMode) {
+
+      payload.summary_mode = summaryMode;
+
+    }
+
+
+    // send to backend
+
+    const res = await fetch("/send", {
+
+      method: "POST",
+
+      headers: {
+
+        "Content-Type": "application/json"
+
+      },
+
+      body: JSON.stringify(payload)
+
+    });
+
+
+    const data = await res.json();
+
+
+    typing.classList.remove("typing");
+
+
+    // render mermaid if visualization
+
+    if (data.reply.includes("```mermaid")) {
+
+      const mermaidCode = data.reply
+
+        .replace("```mermaid", "")
+
+        .replace("```", "")
+
+        .trim();
+
+
+      typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+
+
+      mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
+
+    } else {
+
+      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
+
+    }
+
+
+    messages.scrollTop = messages.scrollHeight;
+
+  }
+
+
+
+
+  // upload pdf
+
+  fileInput.addEventListener("change", async function () {
+
+    if (this.files.length === 0) return;
+
+
+    const file = this.files[0];
+
+
+    const fileMsg = document.createElement("div");
+
+    fileMsg.className = "file-msg";
+
+    fileMsg.textContent = "📎 " + file.name;
+
+    messages.appendChild(fileMsg);
+
+
+    const typing = document.createElement("div");
+
+    typing.className = "message bot typing";
+
+    typing.innerHTML = "<span></span><span></span><span></span>";
+
+    messages.appendChild(typing);
+
+
+    messages.scrollTop = messages.scrollHeight;
+
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+
+    try {
+
+      const res = await fetch("/upload", {
+
+        method: "POST",
+
+        body: formData
+
       });
-    }
 
-    loadPDFs();
 
-    // Show/hide summary mode dropdown
-    function toggleSummaryMode() {
-  const mode = document.getElementById("mode").value;
-  const summary = document.getElementById("summaryMode");
+      loadPDFs();
 
-  if (mode === "summary") {
-    summary.style.display = "block";
-  } else {
-    summary.style.display = "none";
-  }
-  }
-
-    // run when page loads
-    window.addEventListener("DOMContentLoaded", () => {
-  toggleSummaryMode();
-  document.getElementById("mode").addEventListener("change", toggleSummaryMode);
-  });
-
-    async function sendMessage() {
-  const text = textInput.value.trim();
-  if (!text) return;
-
-  const documentName = pdfSelect.value;
-  const mode = modeSelect.value; // keep mode as selected
-
-  // Determine summary mode
-  const summaryMode = (mode === "summary") ? summaryModeSelect.value : null;
-
-  const msg = document.createElement("div");
-  msg.className = "message";
-  msg.textContent = text;
-  messages.appendChild(msg);
-
-  textInput.value = "";
-  // loading animation
-  const typing = document.createElement("div");
-  typing.className = "message bot typing";
-  typing.innerHTML = "<span></span><span></span><span></span>";
-  messages.appendChild(typing);
-
-  messages.scrollTop = messages.scrollHeight;
 
       const data = await res.json();
+
+
       typing.classList.remove("typing");
-      // check if reply contains mermaid diagram
-      if (data.reply.includes("```mermaid")) {
 
-          // remove ```mermaid wrapper
-          const mermaidCode = data.reply
-              .replace("```mermaid", "")
-              .replace("```", "")
-              .trim();
+      typing.textContent = data.status;
 
-          typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
 
-          // render diagram
-          mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
-
-      } else {
-
-          // normal text response
-          typing.innerHTML = data.reply.replace(/\n/g, "<br>");
-
-      }
       messages.scrollTop = messages.scrollHeight;
+
+
+    } catch (error) {
+
+      typing.classList.remove("typing");
+
+      typing.textContent = "❌ Upload failed";
+
     }
 
-  if (summaryMode) {
-    payload.summary_mode = summaryMode; // <-- send separately
-  }
 
-  const res = await fetch("/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    this.value = "";
+
   });
 
-  const data = await res.json();
-  typing.classList.remove("typing");
-  typing.innerHTML = data.reply.replace(/\n/g, "<br>");
-  messages.scrollTop = messages.scrollHeight;
-}
 
-    fileInput.addEventListener("change", async function () {
-      if (this.files.length === 0) return;
 
-      const file = this.files[0];
 
-      const fileMsg = document.createElement("div");
-      fileMsg.className = "file-msg";
-      fileMsg.textContent = "📎 " + file.name;
-      messages.appendChild(fileMsg);
+  // enter to send
 
-      const typing = document.createElement("div");
-      typing.className = "message bot typing";
-      typing.innerHTML = "<span></span><span></span><span></span>";
-      messages.appendChild(typing);
-      messages.scrollTop = messages.scrollHeight;
+  textInput.addEventListener("keydown", function (e) {
 
-      const formData = new FormData();
-      formData.append("file", file);
+    if (e.key === "Enter") {
 
-      try {
-        const res = await fetch("/upload", {
-          method: "POST",
-          body: formData
-        });
-        loadPDFs();
-        const data = await res.json();
+      e.preventDefault();
 
-        typing.classList.remove("typing");
-        typing.textContent = data.status;
-        messages.scrollTop = messages.scrollHeight;
-      } catch (error) {
-        typing.classList.remove("typing");
-        typing.textContent = "❌ Upload failed";
-      }
-      this.value = "";
-    });
+      sendMessage();
 
-    textInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
+    }
+
+  });
 
   </script>
 
