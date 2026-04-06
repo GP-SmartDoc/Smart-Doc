@@ -8,7 +8,18 @@
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
   <script>
-    mermaid.initialize({ startOnLoad: true });
+    mermaid.initialize({
+    startOnLoad: true,
+    theme: "dark",
+    themeVariables: {
+      background: "#1a1d25",
+      primaryColor: "#1f2937",
+      primaryTextColor: "#ffffff",
+      primaryBorderColor: "#ffffff",
+      lineColor: "#ffffff",
+      textColor: "#ffffff"
+    }
+    });
   </script>
   <style>
     body {
@@ -183,12 +194,29 @@
     }
     .mermaid {
       background: #1a1d25;
-      padding: 15px;
-      border-radius: 10px;
-    }
+        padding: 15px;
+        border-radius: 10px;
+
+        width: 100%;
+        overflow-x: auto;
+        text-align: center;
+      }
 
     .mermaid svg {
+
+      width: 100% !important;
+      height: auto !important;
+
+      max-width: 100% !important;
+
+      min-width: 600px;   /* prevents tiny diagrams */
+
+      font-size: 18px !important;
+
       background-color: #1a1d25 !important;
+    }
+    .message.bot {
+      max-width: 100%;
     }
   </style>
   

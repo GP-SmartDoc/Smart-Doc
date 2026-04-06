@@ -9,7 +9,7 @@ from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
-from src.graphs.visualization_graph import generate_visualization
+from src.graphs.visualization_RAG_graph import VisualizationModule  
 from src.states.visualization_state import DiagramType
 
 from langchain.messages import SystemMessage, HumanMessage
@@ -53,41 +53,32 @@ User Input:
         return "qa"  # fallback default
     return intent
 
-def visualization_module(prompt: str):
-    """
-    Calls visualization graph and returns diagram text.
-    Default diagram type can be changed depending on user prompt.
-    """
-    
-    # simple auto-detection of diagram type from text
+def detect_diagram_type(prompt: str):
+
     text = prompt.lower()
 
     if "flowchart" in text:
-        diagram_type = DiagramType.FLOWCHART
-        
-    elif "state diagram" in text or "state machine" in text:
-        diagram_type = DiagramType.STATE
-        
-    elif "class diagram" in text:
-        diagram_type = DiagramType.CLASS
-        
-    elif "er" in text or "entity relationship" in text:
-        diagram_type = DiagramType.ER
-        
-    elif "pie" in text or "chart" in text:
-        diagram_type = DiagramType.PIE
-        
-    elif "mindmap" in text or "mind map" in text:
-        diagram_type = DiagramType.MINDMAP
-        
-    else:
-        # default fallback
-        diagram_type = DiagramType.MINDMAP
+        return DiagramType.FLOWCHART
 
-    return generate_visualization(
-        type=diagram_type,
-        description=prompt
-    )
+    elif "sequence" in text:
+        return DiagramType.SEQUENCE
+
+    elif "state" in text:
+        return DiagramType.STATE
+
+    elif "class" in text:
+        return DiagramType.CLASS
+
+    elif "er" in text or "entity relationship" in text:
+        return DiagramType.ER
+
+    elif "pie" in text:
+        return DiagramType.PIE
+
+    elif "mindmap" in text or "mind map" in text:
+        return DiagramType.MINDMAP
+
+    return DiagramType.FLOWCHART
 # ----------------------------
 # GUI
 # ----------------------------
@@ -123,7 +114,7 @@ try:
     summary_module = SummarizationModule(retriever=rag)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
     memory = ChatMemory()  # NEW: Initialize chat memory with a max length of 10 interactions
-    #visualization_module = lambda state: "Visualization module is under development. Please check back later."
+    visualization_module = VisualizationModule(retriever=rag)
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
@@ -220,7 +211,17 @@ def receive_message(data: ChatRequest):
     # ----------------------------
     elif mode == "visualization":
 
-        reply = visualization_module(user_msg)
+        diagram_type = detect_diagram_type(user_msg)
+
+        reply = visualization_module.invoke(
+
+            request=enhanced_question,
+
+            diagram_type=diagram_type,
+
+            document=document
+
+        )
 
     else:
 
