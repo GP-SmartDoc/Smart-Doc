@@ -398,6 +398,16 @@
 
     });
 
+    function safeDecodeUnicode(str) {
+      // only decode if string contains unicode escape pattern like \u0627
+      if (/\\u[0-9a-fA-F]{4}/.test(str)) {
+        return str.replace(/\\u[0-9a-fA-F]{4}/g, function(match) {
+          return String.fromCharCode(parseInt(match.replace("\\u", ""), 16));
+        });
+      }
+
+      return str; // return unchanged if normal text
+    }
 
     const data = await res.json();
 
@@ -424,9 +434,7 @@
       mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
 
     } else {
-
-      typing.innerHTML = data.reply.replace(/\n/g, "<br>");
-
+      typing.innerHTML = safeDecodeUnicode(data.reply).replace(/\n/g, "<br>");
     }
 
 
