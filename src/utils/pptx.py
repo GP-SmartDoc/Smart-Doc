@@ -3,6 +3,7 @@ import json
 import os
 import re
 import copy
+from PIL import Image
 
 # [cite_start]Mapping to match the order of your layouts.pptx [cite: 12]
 LAYOUT_MAP = {
@@ -50,6 +51,22 @@ def scrub_xml_for_repair(element):
                 parent.remove(node)
     return element
 
+def is_valid_image(path):
+    """Check if image exists and is readable by PIL."""
+    try:
+        if not os.path.exists(path):
+            return False
+        
+        if os.path.getsize(path) == 0:
+            return False
+        
+        with Image.open(path) as img:
+            img.verify()  # verifies header
+        
+        return True
+    except Exception:
+        return False
+    
 def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="generated_slides.pptx"):
     if not os.path.exists(template_path): return
     
@@ -106,7 +123,7 @@ def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="gene
 
         # 6. Image Replacement (Targets DUMMY placeholders)
         img_path = data.get("image_path", data.get("image"))
-        if img_path and os.path.exists(img_path):
+        if img_path and os.path.exists(img_path) and is_valid_image(img_path):
             for shape in list(new_slide.shapes):
                 sh_name = (shape.name or "").upper()
                 if "DUMMY" in sh_name or (shape.has_text_frame and "DUMMY" in shape.text.upper()):
@@ -114,7 +131,15 @@ def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="gene
                     new_slide.shapes._spTree.remove(shape._element)
                     new_slide.shapes.add_picture(img_path, l, t, w, h)
                     break
-
+        else:
+            # if image invalid -> remove dummy placeholder completely
+            for shape in list(new_slide.shapes):
+                sh_name = (shape.name or "").upper()
+                if "DUMMY" in sh_name or (
+                    shape.has_text_frame and "DUMMY" in shape.text.upper()
+                ):
+                    new_slide.shapes._spTree.remove(shape._element)
+                    break
     # 7. Cleanup template slides from the output file
     for _ in range(template_count):
         prs.slides._sldIdLst.remove(prs.slides._sldIdLst[0])
