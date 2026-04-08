@@ -158,16 +158,17 @@ def receive_message(data: ChatRequest):
     # ----------------------------
     # Add user message to memory
     # ----------------------------
-    memory.add("user", user_msg)
-    print("\n--- CHAT MEMORY AFTER USER MESSAGE ---")
-    for i, m in enumerate(memory.history):
-        print(f"{i+1}. {m['role']}: {m['content'][:80]}")
-    print("--------------------------------------\n")
-    # Build context-aware question
-    enhanced_question = memory.build_context(user_msg)
-    print("\n--- ENHANCED QUESTION SENT TO MODEL ---")
-    print(enhanced_question)
-    print("---------------------------------------\n")
+    # memory.add("user", user_msg)
+    # print("\n--- CHAT MEMORY AFTER USER MESSAGE ---")
+    # for i, m in enumerate(memory.history):
+    #     print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    # print("--------------------------------------\n")
+    # # Build context-aware question
+    # enhanced_question = memory.build_context(user_msg)
+    # print("\n--- ENHANCED QUESTION SENT TO MODEL ---")
+    # print(enhanced_question)
+    # print("---------------------------------------\n")
+    enhanced_question = user_msg
     # ----------------------------
     # QA Mode
     # ----------------------------
@@ -198,8 +199,8 @@ def receive_message(data: ChatRequest):
         )
 
         clean_answer = result["Answer"]
-        if(summary_mode == "deepdive"):
-            clean_answer = clean_answer['Answer']
+        if(clean_answer[0] == '{'):
+            clean_answer = clean_answer[12:-2]
 
         reply = format_summarize_output(clean_answer)
 
@@ -245,11 +246,11 @@ def receive_message(data: ChatRequest):
     # ----------------------------
     # Save assistant reply
     # ----------------------------
-    memory.add("assistant", reply)
-    print("\n--- CHAT MEMORY AFTER ASSISTANT RESPONSE ---")
-    for i, m in enumerate(memory.history):
-        print(f"{i+1}. {m['role']}: {m['content'][:80]}")
-    print("--------------------------------------------\n")
+    # memory.add("assistant", reply)
+    # print("\n--- CHAT MEMORY AFTER ASSISTANT RESPONSE ---")
+    # for i, m in enumerate(memory.history):
+    #     print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    # print("--------------------------------------------\n")
     return {"reply": reply}
 
 def format_qa_output(raw_text: str) -> str:
