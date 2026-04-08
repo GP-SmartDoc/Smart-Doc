@@ -79,6 +79,19 @@ def detect_diagram_type(prompt: str):
         return DiagramType.MINDMAP
 
     return DiagramType.FLOWCHART
+
+def detect_language(text: str) -> str:
+    """
+    Detect if text is Arabic or English.
+    Returns 'arabic' or 'english'
+    """
+
+    arabic_chars = re.findall(r'[\u0600-\u06FF]', text)
+
+    if len(arabic_chars) > 0:
+        return "arabic"
+
+    return "english"
 # ----------------------------
 # GUI
 # ----------------------------
@@ -185,6 +198,8 @@ def receive_message(data: ChatRequest):
         )
 
         clean_answer = result["Answer"]
+        if(summary_mode == "deepdive"):
+            clean_answer = clean_answer['Answer']
 
         reply = format_summarize_output(clean_answer)
 
