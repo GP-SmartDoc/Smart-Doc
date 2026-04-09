@@ -263,303 +263,191 @@
 
   <script>
 
-  const messages = document.getElementById("messages");
-  const textInput = document.getElementById("textInput");
-  const fileInput = document.getElementById("fileInput");
-  const pdfSelect = document.getElementById("pdfSelect");
-  const modeSelect = document.getElementById("mode");
-  const summaryModeSelect = document.getElementById("summaryMode");
-
-
-  async function loadPDFs() {
-
-    const res = await fetch("/documents");
-    const data = await res.json();
-
-    pdfSelect.innerHTML = '<option value="all">All Documents</option>';
-
-    data.documents.forEach(doc => {
-
-      const option = document.createElement("option");
-
-      option.value = doc;
-      option.textContent = doc;
-
-      pdfSelect.appendChild(option);
-
-    });
-
-  }
-
-  loadPDFs();
-
-
-  // show summary dropdown only when summary selected
-  function toggleSummaryMode() {
-
-    if (modeSelect.value === "summary") {
-
-      summaryModeSelect.style.display = "block";
-
-    } else {
-
-      summaryModeSelect.style.display = "none";
-
-    }
-
-  }
-
-  // run when page loads
-  window.addEventListener("DOMContentLoaded", () => {
-
-    toggleSummaryMode();
-
-    modeSelect.addEventListener("change", toggleSummaryMode);
-
-  });
-
-
-
-  async function sendMessage() {
-
-    const text = textInput.value.trim();
-
-    if (!text) return;
-
-
-    const documentName = pdfSelect.value;
-
-    const mode = modeSelect.value;
-
-    const summaryMode = (mode === "summary") ? summaryModeSelect.value : null;
-
-
-    // show user message
-
-    const msg = document.createElement("div");
-
-    msg.className = "message";
-
-    msg.textContent = text;
-
-    messages.appendChild(msg);
-
-
-    textInput.value = "";
-
-
-    // typing animation
-
-    const typing = document.createElement("div");
-
-    typing.className = "message bot typing";
-
-    typing.innerHTML = "<span></span><span></span><span></span>";
-
-    messages.appendChild(typing);
-
-
-    messages.scrollTop = messages.scrollHeight;
-
-
-    // build payload
-
-    const payload = {
-
-      message: text,
-
-      document: documentName,
-
-      mode: mode
-
-    };
-
-
-    if (summaryMode) {
-
-      payload.summary_mode = summaryMode;
-
-    }
-
-
-    // send to backend
-
-    const res = await fetch("/send", {
-
-      method: "POST",
-
-      headers: {
-
-        "Content-Type": "application/json"
-
-      },
-
-      body: JSON.stringify(payload)
-
-    });
+    const messages = document.getElementById("messages");
+    const textInput = document.getElementById("textInput");
+    const fileInput = document.getElementById("fileInput");
+    const pdfSelect = document.getElementById("pdfSelect");
+    const modeSelect = document.getElementById("mode");
+    const summaryModeSelect = document.getElementById("summaryMode");
+
+    // ----------------------------
+    // Helper Functions
+    // ----------------------------
 
     function safeDecodeUnicode(str) {
-      // only decode if string contains unicode escape pattern like \u0627
       if (/\\u[0-9a-fA-F]{4}/.test(str)) {
-        return str.replace(/\\u[0-9a-fA-F]{4}/g, function(match) {
-          return String.fromCharCode(parseInt(match.replace("\\u", ""), 16));
-        });
+        return str.replace(/\\u[0-9a-fA-F]{4}/g, (match) => 
+          String.fromCharCode(parseInt(match.replace("\\u", ""), 16))
+        );
       }
-
-      return str; // return unchanged if normal text
+      return str;
     }
-    async function typeWriterEffect(element, text, speed = 15) {
 
+    /**
+     * Typewriter animation for bot responses
+     * @param {HTMLElement} element - The target div
+     * @param {string} text - The text to type
+     * @param {number} speed - Delay in ms (higher = slower)
+     */
+    async function typeWriterEffect(element, text, speed = 25) {
       element.innerHTML = "";
-
       let i = 0;
+      
+      // Standardize line breaks for the typewriter
+      const cleanText = text.replace(/\n/g, "<br>");
 
-      while (i < text.length) {
-
-        // support line breaks
-        if (text.substring(i, i+4) === "<br>") {
-
+      while (i < cleanText.length) {
+        // Check for <br> tag so it doesn't type "<", "b", "r", ">"
+        if (cleanText.substring(i, i + 4) === "<br>") {
           element.innerHTML += "<br>";
           i += 4;
-
         } else {
-
-          element.innerHTML += text[i];
+          element.innerHTML += cleanText[i];
           i++;
-
         }
+        
+        // Auto-scroll as it types
+        messages.scrollTop = messages.scrollHeight;
+        await new Promise(resolve => setTimeout(resolve, speed));
+      }
+    }
 
+    async function loadPDFs() {
+      const res = await fetch("/documents");
+      const data = await res.json();
+      pdfSelect.innerHTML = '<option value="all">All Documents</option>';
+      data.documents.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc;
+        option.textContent = doc;
+        pdfSelect.appendChild(option);
+      });
+    }
+
+    function toggleSummaryMode() {
+      summaryModeSelect.style.display = (modeSelect.value === "summary") ? "block" : "none";
+    }
+
+    // ----------------------------
+    // Core Messaging Logic
+    // ----------------------------
+
+    async function sendMessage() {
+      const text = textInput.value.trim();
+      if (!text) return;
+
+      const documentName = pdfSelect.value;
+      const mode = modeSelect.value;
+      const summaryMode = (mode === "summary") ? summaryModeSelect.value : null;
+
+      // Add user message
+      const msg = document.createElement("div");
+      msg.className = "message";
+      msg.textContent = text;
+      messages.appendChild(msg);
+
+      textInput.value = "";
+
+      // Show typing indicator
+      const typing = document.createElement("div");
+      typing.className = "message bot typing";
+      typing.innerHTML = "<span></span><span></span><span></span>";
+      messages.appendChild(typing);
+      messages.scrollTop = messages.scrollHeight;
+
+      const payload = { message: text, document: documentName, mode: mode };
+      if (summaryMode) payload.summary_mode = summaryMode;
+
+      try {
+        const res = await fetch("/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        // Remove dots animation
+        typing.classList.remove("typing");
+
+        // Handle Visualization (Mermaid diagrams)
+        if (data.reply.includes("```mermaid")) {
+          const mermaidCode = data.reply
+            .replace("```mermaid", "")
+            .replace("```", "")
+            .trim();
+          typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+          mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
+        } 
+        // Handle Text (Typewriter effect)
+        else {
+          const formattedReply = safeDecodeUnicode(data.reply);
+          await typeWriterEffect(typing, formattedReply, 20);
+        }
+      } catch (err) {
+        typing.classList.remove("typing");
+        typing.textContent = "⚠️ Error communicating with server.";
+      }
+    }
+
+    // ----------------------------
+    // File Upload Logic
+    // ----------------------------
+
+    fileInput.addEventListener("change", async function () {
+      if (this.files.length === 0) return;
+
+      for (let i = 0; i < this.files.length; i++) {
+        const file = this.files[i];
+
+        const fileMsg = document.createElement("div");
+        fileMsg.className = "file-msg";
+        fileMsg.textContent = "📎 " + file.name;
+        messages.appendChild(fileMsg);
+
+        const typing = document.createElement("div");
+        typing.className = "message bot typing";
+        typing.innerHTML = "<span></span><span></span><span></span>";
+        messages.appendChild(typing);
         messages.scrollTop = messages.scrollHeight;
 
-        await new Promise(resolve => setTimeout(resolve, speed));
+        const formData = new FormData();
+        formData.append("files", file);
 
+        try {
+          const res = await fetch("/upload", { method: "POST", body: formData });
+          const data = await res.json();
+          typing.classList.remove("typing");
+
+          if (data.uploaded && data.uploaded.includes(file.name)) {
+            await typeWriterEffect(typing, "✅ Uploaded and indexed successfully.");
+          } else {
+            await typeWriterEffect(typing, "❌ Upload failed for this file.");
+          }
+          loadPDFs();
+        } catch (error) {
+          typing.classList.remove("typing");
+          typing.textContent = "❌ Upload failed";
+        }
       }
+      this.value = "";
+    });
 
-    }
-    const data = await res.json();
+    // ----------------------------
+    // Initialization
+    // ----------------------------
 
+    window.addEventListener("DOMContentLoaded", () => {
+      loadPDFs();
+      toggleSummaryMode();
+      modeSelect.addEventListener("change", toggleSummaryMode);
+    });
 
-    typing.classList.remove("typing");
-
-
-    // render mermaid if visualization
-
-    if (data.reply.includes("```mermaid")) {
-
-      const mermaidCode = data.reply
-
-        .replace("```mermaid", "")
-
-        .replace("```", "")
-
-        .trim();
-
-
-      typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
-
-
-      mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
-
-    } else {
-      const formattedReply = safeDecodeUnicode(data.reply).replace(/\n/g, "<br>");
-      await typeWriterEffect(typing, formattedReply, 15);
-    }
-
-
-    messages.scrollTop = messages.scrollHeight;
-
-  }
-
-
-
-
- // upload multiple pdfs with typing animation per file
-
-fileInput.addEventListener("change", async function () {
-
-  if (this.files.length === 0) return;
-
-  for (let i = 0; i < this.files.length; i++) {
-
-    const file = this.files[i];
-
-    // show file name in chat
-    const fileMsg = document.createElement("div");
-    fileMsg.className = "file-msg";
-    fileMsg.textContent = "📎 " + file.name;
-
-    messages.appendChild(fileMsg);
-
-    // typing animation under each file
-    const typing = document.createElement("div");
-    typing.className = "message bot typing";
-    typing.innerHTML = "<span></span><span></span><span></span>";
-
-    messages.appendChild(typing);
-
-    messages.scrollTop = messages.scrollHeight;
-
-    const formData = new FormData();
-    formData.append("files", file);
-
-    try {
-
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await res.json();
-
-      typing.classList.remove("typing");
-
-      // success
-      if (data.uploaded && data.uploaded.includes(file.name)) {
-
-        typing.textContent = "✅ Uploaded successfully";
-
+    textInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
       }
-      // failed
-      else {
-
-        typing.textContent = "❌ Upload failed";
-
-      }
-
-      loadPDFs(); // refresh document list
-
-    } catch (error) {
-
-      typing.classList.remove("typing");
-
-      typing.textContent = "❌ Upload failed";
-
-    }
-
-    messages.scrollTop = messages.scrollHeight;
-
-  }
-
-  this.value = "";
-
-});
-
-
-
-
-  // enter to send
-
-  textInput.addEventListener("keydown", function (e) {
-
-    if (e.key === "Enter") {
-
-      e.preventDefault();
-
-      sendMessage();
-
-    }
-
-  });
+    });
 
   </script>
 

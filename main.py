@@ -1,6 +1,6 @@
 import os
 import chromadb
-
+import traceback
 import re
 import textwrap
 from src.config.model import text_model as model
@@ -19,7 +19,6 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import List
 
-from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
@@ -123,6 +122,7 @@ try:
     client = chromadb.PersistentClient(path="./chroma_db")
     # 2. RAG Engine
     rag = RAGEngine(client)
+    print("rag done")
     # 3. Initialize QA and Summary modules
     qa_module = QuestionAnsweringModule(retriever=rag)
     summary_module = SummarizationModule(retriever=rag)
@@ -132,6 +132,7 @@ try:
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
+    traceback.print_exc()
 
 # ----------------------------
 # Routes
