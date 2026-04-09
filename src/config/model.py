@@ -10,7 +10,6 @@ load_dotenv()
 MODEL_BACKEND = os.getenv("MODEL_BACKEND", "groq").lower()
 TEMPERATURE = float(os.getenv("MODEL_TEMPERATURE", 0))
 
-
 # ===============================
 # TEXT MODEL
 # ===============================
@@ -22,7 +21,8 @@ if MODEL_BACKEND == "groq":
             "TEXT_MODEL",
             "meta-llama/llama-4-scout-17b-16e-instruct"
         ),
-        temperature=TEMPERATURE
+        temperature=TEMPERATURE,
+        api_key=os.getenv("GROQ_API_KEY")
     )
 
     image_model = ChatGroq(
@@ -30,7 +30,8 @@ if MODEL_BACKEND == "groq":
             "IMAGE_MODEL",
             "meta-llama/llama-4-scout-17b-16e-instruct"
         ),
-        temperature=TEMPERATURE
+        temperature=TEMPERATURE,
+        api_key=os.getenv("GROQ_API_KEY")
     )
 
 elif MODEL_BACKEND == "openai":

@@ -316,6 +316,34 @@ class RAGEngine:
         """
         print()
         pass
+
+    # =========================================================
+    # IMAGE INGESTION (MANUAL)
+    # =========================================================
+    def add_image(self, file_path):
+        abs_path = os.path.abspath(file_path)
+        image = Image.open(abs_path)
+        caption = self._caption_image(image)
+        image_id = str(uuid.uuid4())
+
+        self.__image_collection.add(
+            ids=[image_id],
+            uris=[abs_path],
+            metadatas=[{
+                "source": abs_path,
+                "caption": caption
+            }]
+        )
+
+        self._get_collection(caption).add(
+            documents=[caption],
+            ids=[f"{image_id}_caption"],
+            metadatas={
+                "type": "image_caption",
+                "image_id": image_id,
+                "source": abs_path
+            }
+        )
     # =====================================================
     # QUERY WITH DOCUMENT FILTER
     # =====================================================

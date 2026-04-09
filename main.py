@@ -17,6 +17,7 @@ from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from typing import List
 
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
@@ -356,22 +357,34 @@ def format_summarize_output(raw_text: str) -> str:
 
     return reply
 
-
-
-
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    file_path = f"{UPLOAD_FOLDER}/{file.filename}"
+async def upload_files(files: List[UploadFile] = File(...)):
 
-    try:
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+    uploaded_files = []
+    failed_files = []
 
-        rag.add_pdf(file_path)
+    for file in files:
 
-        print("PDF successfully indexed.")
+        file_path = f"{UPLOAD_FOLDER}/{file.filename}"
 
-        return {"status": f"✅ {file.filename} uploaded"}
+        try:
+            with open(file_path, "wb") as f:
+                f.write(await file.read())
 
-    except Exception as e:
-        return {"status": f"❌ Upload failed: {str(e)}"}
+            rag.add_pdf(file_path)
+            print("PDF successfully indexed.")
+            uploaded_files.append(file.filename)
+
+        except Exception as e:
+            print(f"Error uploading {file.filename}: {e}")
+            failed_files.append(
+                {
+                    "file": file.filename,
+                    "error": str(e)
+                }
+            )
+
+    return {
+        "uploaded": uploaded_files,
+        "failed": failed_files
+    }

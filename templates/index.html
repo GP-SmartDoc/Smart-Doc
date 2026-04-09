@@ -234,7 +234,7 @@
     <div class="input-area">
       <button class="upload-btn" onclick="fileInput.click()">+</button>
 
-      <input type="file" id="fileInput" />
+      <input type="file" id="fileInput" multiple>
 
       <select id="pdfSelect" class="text-input" style="flex:0 0 120px;">
         <option value="all">All Documents</option>
@@ -408,7 +408,34 @@
 
       return str; // return unchanged if normal text
     }
+    async function typeWriterEffect(element, text, speed = 15) {
 
+      element.innerHTML = "";
+
+      let i = 0;
+
+      while (i < text.length) {
+
+        // support line breaks
+        if (text.substring(i, i+4) === "<br>") {
+
+          element.innerHTML += "<br>";
+          i += 4;
+
+        } else {
+
+          element.innerHTML += text[i];
+          i++;
+
+        }
+
+        messages.scrollTop = messages.scrollHeight;
+
+        await new Promise(resolve => setTimeout(resolve, speed));
+
+      }
+
+    }
     const data = await res.json();
 
 
@@ -434,7 +461,8 @@
       mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
 
     } else {
-      typing.innerHTML = safeDecodeUnicode(data.reply).replace(/\n/g, "<br>");
+      const formattedReply = safeDecodeUnicode(data.reply).replace(/\n/g, "<br>");
+      await typeWriterEffect(typing, formattedReply, 15);
     }
 
 
@@ -445,66 +473,60 @@
 
 
 
-  // upload pdf
+ // upload multiple pdfs with typing animation per file
 
-  fileInput.addEventListener("change", async function () {
+fileInput.addEventListener("change", async function () {
 
-    if (this.files.length === 0) return;
+  if (this.files.length === 0) return;
 
+  for (let i = 0; i < this.files.length; i++) {
 
-    const file = this.files[0];
+    const file = this.files[i];
 
-
+    // show file name in chat
     const fileMsg = document.createElement("div");
-
     fileMsg.className = "file-msg";
-
     fileMsg.textContent = "📎 " + file.name;
 
     messages.appendChild(fileMsg);
 
-
+    // typing animation under each file
     const typing = document.createElement("div");
-
     typing.className = "message bot typing";
-
     typing.innerHTML = "<span></span><span></span><span></span>";
 
     messages.appendChild(typing);
 
-
     messages.scrollTop = messages.scrollHeight;
 
-
     const formData = new FormData();
-
-    formData.append("file", file);
-
+    formData.append("files", file);
 
     try {
 
       const res = await fetch("/upload", {
-
         method: "POST",
-
         body: formData
-
       });
-
-
-      loadPDFs();
-
 
       const data = await res.json();
 
-
       typing.classList.remove("typing");
 
-      typing.textContent = data.status;
+      // success
+      if (data.uploaded && data.uploaded.includes(file.name)) {
 
+        typing.textContent = "✅ Uploaded successfully";
 
-      messages.scrollTop = messages.scrollHeight;
+      }
+      // failed
+      else {
 
+        typing.textContent = "❌ Upload failed";
+
+      }
+
+      loadPDFs(); // refresh document list
 
     } catch (error) {
 
@@ -514,10 +536,13 @@
 
     }
 
+    messages.scrollTop = messages.scrollHeight;
 
-    this.value = "";
+  }
 
-  });
+  this.value = "";
+
+});
 
 
 
