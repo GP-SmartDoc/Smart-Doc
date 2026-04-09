@@ -3,6 +3,7 @@ import json
 import os
 import re
 import copy
+from PIL import Image
 
 # [cite_start]Mapping to match the order of your layouts.pptx [cite: 12]
 LAYOUT_MAP = {
@@ -49,7 +50,7 @@ def scrub_xml_for_repair(element):
             if parent is not None:
                 parent.remove(node)
     return element
-
+ 
 def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="generated_slides.pptx"):
     if not os.path.exists(template_path): return
     
@@ -106,15 +107,16 @@ def save_as_pptx(raw_llm_output, template_path="layouts.pptx", output_path="gene
 
         # 6. Image Replacement (Targets DUMMY placeholders)
         img_path = data.get("image_path", data.get("image"))
-        if img_path and os.path.exists(img_path):
-            for shape in list(new_slide.shapes):
-                sh_name = (shape.name or "").upper()
-                if "DUMMY" in sh_name or (shape.has_text_frame and "DUMMY" in shape.text.upper()):
-                    l, t, w, h = shape.left, shape.top, shape.width, shape.height
-                    new_slide.shapes._spTree.remove(shape._element)
+        
+        for shape in list(new_slide.shapes):
+            sh_name = (shape.name or "").upper()
+            if "DUMMY" in sh_name or (shape.has_text_frame and "DUMMY" in shape.text.upper()):
+                l, t, w, h = shape.left, shape.top, shape.width, shape.height
+                new_slide.shapes._spTree.remove(shape._element)
+                if img_path and os.path.exists(img_path):
                     new_slide.shapes.add_picture(img_path, l, t, w, h)
-                    break
-
+                break
+        
     # 7. Cleanup template slides from the output file
     for _ in range(template_count):
         prs.slides._sldIdLst.remove(prs.slides._sldIdLst[0])

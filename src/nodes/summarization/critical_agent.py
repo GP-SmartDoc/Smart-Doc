@@ -1,10 +1,10 @@
 from langchain.messages import SystemMessage, HumanMessage
-from src.config.model import model
+from src.config.model import text_model as model
 import src.config.summarization_prompts as prompts
 import src.config.qa_prompts as qprompts
 import json
 
-def critical_agent(state: dict, model):
+def critical_agent(state: dict, model=model):
     if state.get("cross_modal_analysis"):
         return {"llm_calls": 0}
 

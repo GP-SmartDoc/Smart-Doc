@@ -16,7 +16,7 @@ from ultralytics import YOLO
 from pathlib import Path
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from src.utils.image import encode_image_from_path
-
+from langdetect import detect, DetectorFactory
 
 class RAGEngine:
 
@@ -36,11 +36,12 @@ class RAGEngine:
 
         # ---------------- EMBEDDERS ----------------
 
-        self.__text_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-MiniLM-L6-v2",
-            device=self.__device
+        self.__english_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="./models/all-MiniLM-L6-v2"
         )
-
+        self.__arabic_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="./models/GATE-AraBert-v1"
+        )
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
             model_name="ViT-B-32",
             device=self.__device
@@ -51,9 +52,11 @@ class RAGEngine:
 
         # ---------------- COLLECTIONS ----------------
 
-        self.__text_collection = self.__client.get_or_create_collection(
-            name="text_collection",
-            embedding_function=self.__text_embedder
+        self.__ar_collection = self.__client.get_or_create_collection(
+            name="arabic_text", embedding_function=self.__arabic_embedder
+        )
+        self.__en_collection = self.__client.get_or_create_collection(
+            name="english_text", embedding_function=self.__english_embedder
         )
 
 
@@ -82,7 +85,7 @@ class RAGEngine:
         self.__yolo = YOLO("./models/yolo11n_doc_layout.pt")
         self.__yolo.to(self.__device)
 
-        # ---------------- IMAGE CAPTIONING ----------------
+        
 
         # ---------------- IGNORED CLASSES ----------------
 
@@ -105,6 +108,46 @@ class RAGEngine:
             for chunk in iter(lambda: f.read(4096), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
+    
+    def _get_collection(self, text):
+        """Helper to route text based on language"""
+        try:
+            return self.__ar_collection if detect(text) == 'ar' else self.__en_collection
+        except:
+            return self.__en_collection # Default to English if detection fails
+        
+    def add_txt(self, file_path):
+        abs_path = os.path.abspath(file_path)
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+        
+        chunks = self.__child_splitter.split_text(text)
+        for i, chunk in enumerate(chunks):
+            # Route each chunk to the correct collection
+            target_col = self._get_collection(chunk)
+            target_col.add(
+                documents=[chunk],
+                ids=[f"{os.path.basename(file_path)}_chunk_{i}"]
+            )
+        
+    def _caption_image(self, pil_image):
+        inputs = self.__caption_processor(
+            images=pil_image,
+            return_tensors="pt"
+        )
+
+        with torch.no_grad():
+            out = self.__caption_model.generate(
+                **inputs,
+                max_new_tokens=50
+            )
+
+        caption = self.__caption_processor.decode(
+            out[0],
+            skip_special_tokens=True
+        )
+
+        return caption
     # =====================================================
     # ADD PDF
     # =====================================================
@@ -150,7 +193,8 @@ class RAGEngine:
                 for c_id, child in enumerate(child_chunks):
 
 
-                    self.__text_collection.add(
+                    target_col = self._get_collection(child)
+                    target_col.add(
 
                         documents=[child],
 
@@ -264,6 +308,42 @@ class RAGEngine:
         print(f"PDF indexed correctly: {filename}")
   
 
+    def add_file(path:str):
+        """
+        TO BE IMPLEMENTED: add any file type, then a specific add fucntion
+            should be called based on file extension. If a file type is unavailible, 
+            such case should be handeled.
+        """
+        print()
+        pass
+
+    # =========================================================
+    # IMAGE INGESTION (MANUAL)
+    # =========================================================
+    def add_image(self, file_path):
+        abs_path = os.path.abspath(file_path)
+        image = Image.open(abs_path)
+        caption = self._caption_image(image)
+        image_id = str(uuid.uuid4())
+
+        self.__image_collection.add(
+            ids=[image_id],
+            uris=[abs_path],
+            metadatas=[{
+                "source": abs_path,
+                "caption": caption
+            }]
+        )
+
+        self._get_collection(caption).add(
+            documents=[caption],
+            ids=[f"{image_id}_caption"],
+            metadatas={
+                "type": "image_caption",
+                "image_id": image_id,
+                "source": abs_path
+            }
+        )
     # =====================================================
     # QUERY WITH DOCUMENT FILTER
     # =====================================================
@@ -295,15 +375,11 @@ class RAGEngine:
 
             }
 
-
-        text_res = self.__text_collection.query(
-
-            query_texts=[prompt],
-
-            n_results=k_text,
-
-            where=where_filter
-
+        target_col = self._get_collection(prompt)
+        text_res = target_col.query(
+        query_texts=[prompt],
+        n_results=k_text,
+        where=where_filter
         )
 
 

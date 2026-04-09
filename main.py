@@ -1,28 +1,35 @@
-# main.py
 import os
-import sys
 import chromadb
 
 import re
 import textwrap
-from src.config.model import model
+from src.config.model import text_model as model
+from src.config.model import image_model as v_model
 from src.vector_store.RAG import RAGEngine
 from src.graphs.summary_graph import SummarizationModule
 from src.graphs.qa_graph import QuestionAnsweringModule
 from src.graphs.slide_generation_graph import generate_slides
+from src.graphs.visualization_RAG_graph import VisualizationModule  
+from src.states.visualization_state import DiagramType
 
 from langchain.messages import SystemMessage, HumanMessage
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from typing import List
 
+from src.vector_store.RAG import RAGEngine
+from src.graphs.summary_graph import SummarizationModule
+from src.graphs.qa_graph import QuestionAnsweringModule
+from src.graphs.slide_generation_graph import generate_slides
 from src.utils.pptx import save_as_pptx
 
-
+# NEW
+from src.memory.chat_memory import ChatMemory
 
 # ----------------------------
-# Model-driven Intent Detection
+# Request Model
 # ----------------------------
 def detect_intent_model(user_input: str) -> str:
     """
@@ -47,7 +54,45 @@ User Input:
         return "qa"  # fallback default
     return intent
 
+def detect_diagram_type(prompt: str):
 
+    text = prompt.lower()
+
+    if "flowchart" in text:
+        return DiagramType.FLOWCHART
+
+    elif "sequence" in text:
+        return DiagramType.SEQUENCE
+
+    elif "state" in text:
+        return DiagramType.STATE
+
+    elif "class" in text:
+        return DiagramType.CLASS
+
+    elif "er" in text or "entity relationship" in text:
+        return DiagramType.ER
+
+    elif "pie" in text:
+        return DiagramType.PIE
+
+    elif "mindmap" in text or "mind map" in text:
+        return DiagramType.MINDMAP
+
+    return DiagramType.FLOWCHART
+
+def detect_language(text: str) -> str:
+    """
+    Detect if text is Arabic or English.
+    Returns 'arabic' or 'english'
+    """
+
+    arabic_chars = re.findall(r'[\u0600-\u06FF]', text)
+
+    if len(arabic_chars) > 0:
+        return "arabic"
+
+    return "english"
 # ----------------------------
 # GUI
 # ----------------------------
@@ -58,12 +103,19 @@ class ChatRequest(BaseModel):
     message: str
     document: str
     mode: str
+    summary_mode: str = "overview"
+
+# ----------------------------
+# App and Templates
+# ----------------------------
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 UPLOAD_FOLDER = "documents"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ----------------------------
-# Main
+# Initialize System
 # ----------------------------
 print("--- Initializing Smart Doc System ---")
 try:
@@ -72,21 +124,24 @@ try:
     # 2. RAG Engine
     rag = RAGEngine(client)
     # 3. Initialize QA and Summary modules
-    qa_module = QuestionAnsweringModule(retriever=rag, model=model)
-    summary_module = SummarizationModule(retriever=rag, model=model)
+    qa_module = QuestionAnsweringModule(retriever=rag)
+    summary_module = SummarizationModule(retriever=rag)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
-    visualization_module = lambda state: "Visualization module is under development. Please check back later."
+    memory = ChatMemory()  # NEW: Initialize chat memory with a max length of 10 interactions
+    visualization_module = VisualizationModule(retriever=rag)
     print("System Ready.\n")
 except Exception as e:
     print(f"Initialization Error: {e}")
 
+# ----------------------------
+# Routes
+# ----------------------------
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-# ------------------
-# LIST DOCUMENTS
-# ------------------
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
 
 @app.get("/documents")
 def list_documents():
@@ -96,39 +151,108 @@ def list_documents():
 
 @app.post("/send")
 def receive_message(data: ChatRequest):
-    user_msg = data.message
-    mode = data.mode  # default to "qa"
-    #mode = detect_intent_model(user_msg)
-    #print(f"Detected intent: {mode}")
-    document = data.document  # default to "all"
-    ##########################################
-    """#########  Call LLM Here Based on Mode ##########"""
-    ##########################################
 
+    user_msg = data.message
+    document = data.document
+    mode = data.mode
+
+    # ----------------------------
+    # Add user message to memory
+    # ----------------------------
+    # memory.add("user", user_msg)
+    # print("\n--- CHAT MEMORY AFTER USER MESSAGE ---")
+    # for i, m in enumerate(memory.history):
+    #     print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    # print("--------------------------------------\n")
+    # # Build context-aware question
+    # enhanced_question = memory.build_context(user_msg)
+    # print("\n--- ENHANCED QUESTION SENT TO MODEL ---")
+    # print(enhanced_question)
+    # print("---------------------------------------\n")
+    enhanced_question = user_msg
+    # ----------------------------
+    # QA Mode
+    # ----------------------------
     if mode == "qa":
-        result = qa_module.invoke(question=user_msg, document=document)
-        clean_answer = result["Answer"][12:-2]
-        reply = format_qa_output(clean_answer)
-    elif mode == "summary":
-        result = summary_module.invoke(
-            question=user_msg,
+
+        result = qa_module.invoke(
+            question=enhanced_question,
             document=document
         )
-        clean_answer = result['Answer']
+
+        clean_answer = result["Answer"][12:-2]
+
+        reply = format_qa_output(clean_answer)
+
+    # ----------------------------
+    # Summary Mode
+    # ----------------------------
+    elif mode == "summary":
+
+        summary_mode = data.summary_mode
+
+        print(f"Invoking summary with mode: {summary_mode}")
+
+        result = summary_module.invoke(
+            question=enhanced_question,
+            document=document,
+            summary_mode=summary_mode
+        )
+
+        clean_answer = result["Answer"]
+        if(clean_answer[0] == '{'):
+            clean_answer = clean_answer[12:-2]
+
         reply = format_summarize_output(clean_answer)
 
+    # ----------------------------
+    # Slide Generation
+    # ----------------------------
     elif mode == "slide_generation":
-        reply = slide_generation_module(user_msg, document=document)
-        save_as_pptx(reply, "layouts.pptx", "generated_slides.pptx")
+
+        reply = slide_generation_module(
+            enhanced_question,
+            document=document
+        )
+
+        save_as_pptx(
+            reply,
+            "layouts.pptx",
+            "generated_slides.pptx"
+        )
+
         reply = "Slide generation completed and saved as 'generated_slides.pptx'."
+
+    # ----------------------------
+    # Visualization
+    # ----------------------------
     elif mode == "visualization":
-        reply = visualization_module()
+
+        diagram_type = detect_diagram_type(user_msg)
+
+        reply = visualization_module.invoke(
+
+            request=enhanced_question,
+
+            diagram_type=diagram_type,
+
+            document=document
+
+        )
+
     else:
+
         reply = f"You said: {user_msg}"
-    
+
+    # ----------------------------
+    # Save assistant reply
+    # ----------------------------
+    # memory.add("assistant", reply)
+    # print("\n--- CHAT MEMORY AFTER ASSISTANT RESPONSE ---")
+    # for i, m in enumerate(memory.history):
+    #     print(f"{i+1}. {m['role']}: {m['content'][:80]}")
+    # print("--------------------------------------------\n")
     return {"reply": reply}
-
-
 
 def format_qa_output(raw_text: str) -> str:
     """
@@ -233,23 +357,34 @@ def format_summarize_output(raw_text: str) -> str:
 
     return reply
 
-
-
-
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    file_path = f"{UPLOAD_FOLDER}/{file.filename}"
-    try:
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+async def upload_files(files: List[UploadFile] = File(...)):
 
-        rag.add_pdf(file_path)
-        print("PDF successfully indexed.")
-    except Exception as e:
-        return {"status": f"❌ Upload failed: {str(e)}"}
+    uploaded_files = []
+    failed_files = []
 
-    ##########################################
-    """#######  Process File Here  ########"""
-    ##########################################
+    for file in files:
 
-    return {"status": f"✅ {file.filename} uploaded"}
+        file_path = f"{UPLOAD_FOLDER}/{file.filename}"
+
+        try:
+            with open(file_path, "wb") as f:
+                f.write(await file.read())
+
+            rag.add_pdf(file_path)
+            print("PDF successfully indexed.")
+            uploaded_files.append(file.filename)
+
+        except Exception as e:
+            print(f"Error uploading {file.filename}: {e}")
+            failed_files.append(
+                {
+                    "file": file.filename,
+                    "error": str(e)
+                }
+            )
+
+    return {
+        "uploaded": uploaded_files,
+        "failed": failed_files
+    }

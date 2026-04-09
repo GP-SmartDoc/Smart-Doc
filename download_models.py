@@ -14,49 +14,61 @@ BASE_DIR = "./models"
 os.makedirs(BASE_DIR, exist_ok=True)
 
 # =========================================================
-# Sentence Transformers (Text Embeddings)
+# Sentence Transformers (Arabic Embeddings)
 # =========================================================
-print("Downloading all-MiniLM-L6-v2...")
+print("Downloading GATE-AraBert-v1...")
 snapshot_download(
-    repo_id="sentence-transformers/all-MiniLM-L6-v2",
-    local_dir=f"{BASE_DIR}/all-MiniLM-L6-v2",
+    repo_id="Omartificial-Intelligence-Space/GATE-AraBert-v1",
+    local_dir=f"{BASE_DIR}/GATE-AraBert-v1",
     local_dir_use_symlinks=False
 )
+# # =========================================================
+# # Sentence Transformers (English Embeddings)
+# # =========================================================
+# print("Downloading all-MiniLM-L6-v2...")
+# snapshot_download(
+#     repo_id="sentence-transformers/all-MiniLM-L6-v2",
+#     local_dir=f"{BASE_DIR}/all-MiniLM-L6-v2",
+#     local_dir_use_symlinks=False
+# )
 
-# =========================================================
-# BLIP Image Captioning
-# =========================================================
-print("Downloading BLIP image captioning model...")
-snapshot_download(
-    repo_id="Salesforce/blip-image-captioning-base",
-    local_dir=f"{BASE_DIR}/blip-image-captioning-base",
-    local_dir_use_symlinks=False
-)
+# # =========================================================
+# # BLIP Image Captioning
+# # =========================================================
+# print("Downloading BLIP image captioning model...")
+# snapshot_download(
+#     repo_id="Salesforce/blip-image-captioning-base",
+#     local_dir=f"{BASE_DIR}/blip-image-captioning-base",
+#     local_dir_use_symlinks=False
+# )
 
-# =========================================================
-# YOLO Document Layout Model
-# =========================================================
-MODELS = [
-    "yolo11n_doc_layout.pt",
-    "yolo11s_doc_layout.pt",
-    "yolo11m_doc_layout.pt",
-]
+# # =========================================================
+# # YOLO Document Layout Model
+# # =========================================================
+# MODELS = [
+#     "yolo11n_doc_layout.pt",
+#     "yolo11s_doc_layout.pt",
+#     "yolo11m_doc_layout.pt",
+# ]
 
-REPO_ID = "Armaggheddon/yolo11-document-layout"
-MODELS_DIR = Path("./models")
-MODELS_DIR.mkdir(exist_ok=True)
+# REPO_ID = "Armaggheddon/yolo11-document-layout"
+# MODELS_DIR = Path("./models")
+# MODELS_DIR.mkdir(exist_ok=True)
 
-for model in MODELS:
-    print(f"Downloading {model} ...")
-    hf_hub_download(
-        repo_id=REPO_ID,
-        filename=model,
-        local_dir=MODELS_DIR,
-        local_dir_use_symlinks=False
-    )
+# for model in MODELS:
+#     print(f"Downloading {model} ...")
+#     hf_hub_download(
+#         repo_id=REPO_ID,
+#         filename=model,
+#         local_dir=MODELS_DIR,
+#         local_dir_use_symlinks=False
+#     )
 
-print("✅ All YOLOv11 document layout models downloaded locally.")
+# print("✅ All YOLOv11 document layout models downloaded locally.")
 
 # run these commands in terminal (cmd)
 #setx HF_HUB_OFFLINE 1
 #setx TRANSFORMERS_OFFLINE 1
+# or
+#set HF_HUB_OFFLINE=1
+#set TRANSFORMERS_OFFLINE=1

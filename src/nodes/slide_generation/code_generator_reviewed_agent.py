@@ -1,7 +1,7 @@
 from langchain.messages import AnyMessage, HumanMessage, AIMessage, SystemMessage
 
 import src.config.slide_generation_prompts as prompts
-from src.config.model import model
+from src.config.model import text_model as model
 
 def Code_Generator_Reviewed(state:dict):
     

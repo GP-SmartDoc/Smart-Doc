@@ -1,5 +1,5 @@
 from langchain.messages import SystemMessage, HumanMessage, AIMessage
-from src.config.model import model
+from src.config.model import text_model as model
 import src.config.summarization_prompts as prompts
 import src.config.qa_prompts as qprompts
 import json
