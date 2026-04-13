@@ -1,3 +1,4 @@
+import logging
 import os
 import chromadb
 import traceback
@@ -26,6 +27,17 @@ from src.utils.pptx import save_as_pptx
 
 # NEW
 from src.memory.chat_memory import ChatMemory
+
+# Initiate logging before anything else
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(), # Print to console
+        logging.FileHandler('system.log') # Save to file
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # ----------------------------
 # Request Model
@@ -116,22 +128,22 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ----------------------------
 # Initialize System
 # ----------------------------
-print("--- Initializing Smart Doc System ---")
+logger.info("--- Initializing Smart Doc System ---")
 try:
     # 1. ChromaDB Client
     client = chromadb.PersistentClient(path="./chroma_db")
     # 2. RAG Engine
     rag = RAGEngine(client)
-    print("rag done")
+    logger.info("Initialized RAGEngine")
     # 3. Initialize QA and Summary modules
     qa_module = QuestionAnsweringModule(retriever=rag)
     summary_module = SummarizationModule(retriever=rag)
     slide_generation_module = lambda prompt, document: generate_slides(rag, prompt, document=document)
     memory = ChatMemory()  # NEW: Initialize chat memory with a max length of 10 interactions
     visualization_module = VisualizationModule(retriever=rag)
-    print("System Ready.\n")
+    logger.info("Initialzed all AI modules")
 except Exception as e:
-    print(f"Initialization Error: {e}")
+    logger.critical("Initialzation Error")
     traceback.print_exc()
 
 # ----------------------------
@@ -192,7 +204,7 @@ def receive_message(data: ChatRequest):
 
         summary_mode = data.summary_mode
 
-        print(f"Invoking summary with mode: {summary_mode}")
+        logger.info(f"Invoking summary with mode: {summary_mode}")
 
         result = summary_module.invoke(
             question=enhanced_question,
@@ -373,11 +385,11 @@ async def upload_files(files: List[UploadFile] = File(...)):
                 f.write(await file.read())
 
             rag.add_pdf(file_path)
-            print("PDF successfully indexed.")
+            logger.info(f"PDF with path {file_path} successfully added and indexed.")
             uploaded_files.append(file.filename)
 
         except Exception as e:
-            print(f"Error uploading {file.filename}: {e}")
+            logger.error(f"Error uploading {file.filename}: {e}")
             failed_files.append(
                 {
                     "file": file.filename,

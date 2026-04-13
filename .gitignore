@@ -27,3 +27,4 @@ src/vector_store/__pycache__/
 src/__init__.py
 __pycache__/
 TestPDFs/
+system.log
