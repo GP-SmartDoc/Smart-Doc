@@ -1,9 +1,10 @@
+import logging
 import chromadb
 import fitz
 import io
 import os
 import uuid
-import torch  
+import torch
 import hashlib
 import shutil
 
@@ -17,6 +18,9 @@ from pathlib import Path
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from src.utils.image import encode_image_from_path
 from langdetect import detect, DetectorFactory
+
+logger = logging.getLogger(__name__)
+
 
 class RAGEngine:
 
@@ -35,19 +39,21 @@ class RAGEngine:
 
         # ---------------- EMBEDDERS ----------------
 
-        self.__english_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/all-MiniLM-L6-v2"
+        self.__english_embedder = (
+            embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="./models/all-MiniLM-L6-v2"
+            )
         )
-        self.__arabic_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="./models/GATE-AraBert-v1"
+        self.__arabic_embedder = (
+            embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="./models/GATE-AraBert-v1"
+            )
         )
         self.__image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
-            model_name="ViT-B-32",
-            device=self.__device
+            model_name="ViT-B-32", device=self.__device
         )
 
         self.__image_loader = ImageLoader()
-
 
         # ---------------- COLLECTIONS ----------------
 
@@ -58,44 +64,36 @@ class RAGEngine:
             name="english_text", embedding_function=self.__english_embedder
         )
 
-
         self.__image_collection = self.__client.get_or_create_collection(
             name="image_collection",
             embedding_function=self.__image_embedder,
-            data_loader=self.__image_loader
+            data_loader=self.__image_loader,
         )
-
 
         # ---------------- TEXT SPLITTER ----------------
 
         self.__parent_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1500,
-            chunk_overlap=200
+            chunk_size=1500, chunk_overlap=200
         )
 
         self.__child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=400,
-            chunk_overlap=50
+            chunk_size=400, chunk_overlap=50
         )
-
 
         # ---------------- YOLO ----------------
 
         self.__yolo = YOLO("./models/yolo11n_doc_layout.pt")
         self.__yolo.to(self.__device)
 
-        
-
         # ---------------- IGNORED CLASSES ----------------
 
         self.__ignored_layout_classes = {
-
             "Text",
             "Title",
             "Section-header",
             "Page-header",
             "Page-footer",
-            "List-item"
+            "List-item",
         }
 
     # =====================================================
@@ -107,46 +105,39 @@ class RAGEngine:
             for chunk in iter(lambda: f.read(4096), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
-    
+
     def _get_collection(self, text):
         """Helper to route text based on language"""
         try:
-            return self.__ar_collection if detect(text) == 'ar' else self.__en_collection
+            return (
+                self.__ar_collection if detect(text) == "ar" else self.__en_collection
+            )
         except:
-            return self.__en_collection # Default to English if detection fails
-        
+            return self.__en_collection  # Default to English if detection fails
+
     def add_txt(self, file_path):
         abs_path = os.path.abspath(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
-        
+
         chunks = self.__child_splitter.split_text(text)
         for i, chunk in enumerate(chunks):
             # Route each chunk to the correct collection
             target_col = self._get_collection(chunk)
             target_col.add(
-                documents=[chunk],
-                ids=[f"{os.path.basename(file_path)}_chunk_{i}"]
+                documents=[chunk], ids=[f"{os.path.basename(file_path)}_chunk_{i}"]
             )
-        
+
     def _caption_image(self, pil_image):
-        inputs = self.__caption_processor(
-            images=pil_image,
-            return_tensors="pt"
-        )
+        inputs = self.__caption_processor(images=pil_image, return_tensors="pt")
 
         with torch.no_grad():
-            out = self.__caption_model.generate(
-                **inputs,
-                max_new_tokens=50
-            )
+            out = self.__caption_model.generate(**inputs, max_new_tokens=50)
 
-        caption = self.__caption_processor.decode(
-            out[0],
-            skip_special_tokens=True
-        )
+        caption = self.__caption_processor.decode(out[0], skip_special_tokens=True)
 
         return caption
+
     # =====================================================
     # ADD PDF
     # =====================================================
@@ -159,12 +150,10 @@ class RAGEngine:
         stored_path = os.path.join(self.__documents_path, filename)
 
         if not os.path.exists(stored_path):
-            
             shutil.copy(file_path, stored_path)
 
         # use stored path instead of original path
         file_path = stored_path
-
 
         loader = PyMuPDFLoader(file_path)
 
@@ -172,145 +161,83 @@ class RAGEngine:
 
         pdf = fitz.open(file_path)
 
-
         for page_index, doc in enumerate(docs):
-
 
             # ---------------- TEXT ----------------
 
-
-            parent_chunks = self.__parent_splitter.split_text(
-                doc.page_content
-            )
-
+            parent_chunks = self.__parent_splitter.split_text(doc.page_content)
 
             for p_id, parent in enumerate(parent_chunks):
 
                 child_chunks = self.__child_splitter.split_text(parent)
 
-
                 for c_id, child in enumerate(child_chunks):
-
 
                     target_col = self._get_collection(child)
                     target_col.add(
-
                         documents=[child],
-
-                        ids=[
-
-                            f"{filename}_p{page_index}_P{p_id}_C{c_id}"
-
-                        ],
-
-                        metadatas=[{
-
-                            "page": page_index,
-
-                            "document": filename   
-
-                        }]
-
+                        ids=[f"{filename}_p{page_index}_P{p_id}_C{c_id}"],
+                        metadatas=[{"page": page_index, "document": filename}],
                     )
 
-
             # ---------------- IMAGE ----------------
-
 
             page = pdf[page_index]
 
             pix = page.get_pixmap(dpi=200)
 
-            page_img = Image.open(
-
-                io.BytesIO(pix.tobytes("png"))
-
-            )
-
+            page_img = Image.open(io.BytesIO(pix.tobytes("png")))
 
             page_area = page_img.width * page_img.height
 
-
-            results = self.__yolo(page_img, conf=0.5,device=self.__device)
-
+            results = self.__yolo(page_img, conf=0.5, device=self.__device)
 
             if not results:
 
                 continue
 
-
             result = results[0]
 
-
             for det_id, box in enumerate(result.boxes):
-
 
                 class_id = int(box.cls[0])
 
                 class_name = result.names[class_id]
 
-
                 if class_name in self.__ignored_layout_classes:
 
                     continue
 
+                x0, y0, x1, y1 = map(int, box.xyxy[0].tolist())
 
-                x0, y0, x1, y1 = map(
-
-                    int,
-                    box.xyxy[0].tolist()
-                )
-
-
-                crop = page_img.crop(
-
-                    (x0, y0, x1, y1)
-                )
-
+                crop = page_img.crop((x0, y0, x1, y1))
 
                 img_path = os.path.join(
-
                     self.__blob_storage_path,
-
-                    f"{filename}_p{page_index}_fig{det_id}.png"
-
+                    f"{filename}_p{page_index}_fig{det_id}.png",
                 )
-
 
                 crop.save(img_path)
 
-                image_id = str(uuid.uuid4())
+                # image_id = str(uuid.uuid4())
 
+                # # IMAGE COLLECTION
 
-                # IMAGE COLLECTION
-
-
-                self.__image_collection.add(
-
-                    ids=[image_id],
-
-                    uris=[os.path.abspath(img_path)],
-
-                    metadatas=[{
-
-                        "source": img_path,                       
-
-                        "page": page_index,
-
-                        "document": filename  
-
-                    }]
-
-                )
-
+                # self.__image_collection.add(
+                #     ids=[image_id],
+                #     uris=[os.path.abspath(img_path)],
+                #     metadatas=[
+                #         {"source": img_path, "page": page_index, "document": filename}
+                #     ],
+                # )
+                self.add_image(img_path, src_document=filename, page=page_index)
 
         print(f"PDF indexed correctly: {filename}")
-  
 
-    def add_file(path:str):
+    def add_file(path: str):
         """
         TO BE IMPLEMENTED: add any file type, then a specific add fucntion
-            should be called based on file extension. If a file type is unavailible, 
+            should be called based on file extension. If a file type is unavailible,
             such case should be handeled.
         """
         print()
@@ -319,136 +246,97 @@ class RAGEngine:
     # =========================================================
     # IMAGE INGESTION (MANUAL)
     # =========================================================
-    def add_image(self, file_path):
+    def add_image(self, file_path, src_document=None, page=None):
         abs_path = os.path.abspath(file_path)
         image = Image.open(abs_path)
         caption = self._caption_image(image)
         image_id = str(uuid.uuid4())
-
+        
+        ocr_text = ""  
+        self._get_collection(ocr_text).add(
+            documents=[ocr_text],
+            ids=[f"{image_id}_ocr_text"],
+            metadatas={
+                "type": "image_ocr_text",
+                "image_id": image_id,
+                "source": abs_path,
+            },
+        )
+        
         self.__image_collection.add(
             ids=[image_id],
             uris=[abs_path],
             metadatas=[{
                 "source": abs_path,
-                "caption": caption
-            }]
+                "caption": caption,
+                "document" : src_document,
+                "page":page,
+                "ocr_text" : ocr_text
+                
+            }],
         )
-
-        self._get_collection(caption).add(
-            documents=[caption],
-            ids=[f"{image_id}_caption"],
-            metadatas={
-                "type": "image_caption",
-                "image_id": image_id,
-                "source": abs_path
-            }
-        )
+        
+        
+        # self._get_collection(caption).add(
+        #     documents=[caption],
+        #     ids=[f"{image_id}_caption"],
+        #     metadatas={
+        #         "type": "image_caption",
+        #         "image_id": image_id,
+        #         "source": abs_path,
+        #     },
+        # )
+        
+        # Caption the image and perform ocr
+        # add the ocr to text collection with a reference to 
+        # the image in it's metadata
+        # likewise, add it ocr text as metadata for the image itself
+        
     # =====================================================
     # QUERY WITH DOCUMENT FILTER
     # =====================================================
 
-
-    def query(
-
-        self,
-
-        prompt,
-
-        k_text=6,
-
-        k_image=4,
-
-        document=None
-
-    ):
-
+    def query(self, prompt, k_text=6, k_image=4, document=None):
 
         where_filter = None
 
-
         if document and document != "all":
 
-            where_filter = {
-
-                "document": document
-
-            }
+            where_filter = {"document": document}
 
         target_col = self._get_collection(prompt)
         text_res = target_col.query(
-        query_texts=[prompt],
-        n_results=k_text,
-        where=where_filter
+            query_texts=[prompt], n_results=k_text, where=where_filter
         )
-
 
         img_res = self.__image_collection.query(
-
             query_texts=[prompt],
-
             n_results=k_image,
-
             where=where_filter,
-
-            include=["uris", "metadatas"]
-
+            include=["uris", "metadatas"],
         )
-
 
         encoded_images = []
 
         paths = []
 
-
         for uri, meta in zip(
-
-            img_res.get("uris", [[]])[0],
-
-            img_res.get("metadatas", [[]])[0]
-
+            img_res.get("uris", [[]])[0], img_res.get("metadatas", [[]])[0]
         ):
 
-
-            encoded_images.append(
-
-                encode_image_from_path(uri)
-            )
-
+            encoded_images.append(encode_image_from_path(uri))
 
             paths.append(uri)
 
-
-
         return {
-
-            "text":
-
-            text_res.get(
-
-                "documents",
-
-                [[]]
-
-            )[0],
-
-
-            "images":
-
-            encoded_images,
-
-
-            "paths":
-
-            paths
-
+            "text": text_res.get("documents", [[]])[0],
+            "images": encoded_images,
+            "paths": paths,
         }
-
-
 
     # =====================================================
     # LIST DOCUMENTS
     # =====================================================
-
 
     def list_documents(self):
 
@@ -456,11 +344,7 @@ class RAGEngine:
             return []
 
         docs = [
-
-            f for f in os.listdir(self.__documents_path)
-
-            if f.lower().endswith(".pdf")
-
+            f for f in os.listdir(self.__documents_path) if f.lower().endswith(".pdf")
         ]
 
         return sorted(docs)
