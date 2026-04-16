@@ -21,6 +21,3 @@ file_handler.setFormatter(formatter)
 logger.addHandler(terminal_handler)
 logger.addHandler(file_handler)
 
-# Test it out
-logger.debug("This goes to the file, but NOT the terminal.")
-logger.error("This goes to BOTH the file and the terminal.")

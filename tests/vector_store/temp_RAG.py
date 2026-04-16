@@ -19,8 +19,9 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from src.utils.image import encode_image_from_path
 from langdetect import detect, DetectorFactory
 
-logger = logging.getLogger(__name__)
+from src.vector_store.ocr import perform_ocr
 
+logger = logging.getLogger(__name__)
 
 class RAGEngine:
 
@@ -244,7 +245,7 @@ class RAGEngine:
         pass
 
     # =========================================================
-    # IMAGE INGESTION (MANUAL)
+    # ADD IMAGE
     # =========================================================
     def add_image(self, file_path, src_document=None, page=None):
         abs_path = os.path.abspath(file_path)
@@ -252,7 +253,8 @@ class RAGEngine:
         caption = self._caption_image(image)
         image_id = str(uuid.uuid4())
         
-        ocr_text = ""  
+        ocr_text = perform_ocr(abs_path) 
+        
         self._get_collection(ocr_text).add(
             documents=[ocr_text],
             ids=[f"{image_id}_ocr_text"],
@@ -262,7 +264,6 @@ class RAGEngine:
                 "source": abs_path,
             },
         )
-        
         self.__image_collection.add(
             ids=[image_id],
             uris=[abs_path],
@@ -276,7 +277,6 @@ class RAGEngine:
             }],
         )
         
-        
         # self._get_collection(caption).add(
         #     documents=[caption],
         #     ids=[f"{image_id}_caption"],
@@ -287,10 +287,12 @@ class RAGEngine:
         #     },
         # )
         
+        
         # Caption the image and perform ocr
         # add the ocr to text collection with a reference to 
         # the image in it's metadata
         # likewise, add it ocr text as metadata for the image itself
+        
         
     # =====================================================
     # QUERY WITH DOCUMENT FILTER
