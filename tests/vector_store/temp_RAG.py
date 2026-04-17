@@ -250,7 +250,8 @@ class RAGEngine:
     def add_image(self, file_path, src_document=None, page=None):
         abs_path = os.path.abspath(file_path)
         image = Image.open(abs_path)
-        caption = self._caption_image(image)
+        # caption = self._caption_image(image)
+        caption = None
         image_id = str(uuid.uuid4())
         
         ocr_text = perform_ocr(abs_path) 
