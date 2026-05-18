@@ -1,0 +1,3 @@
+uvicorn --app-dir src smart_doc.app.main:app --reload
+
+##to run visualization type in cmd while you at SmartDoc " python -m tests.visualization_test "
