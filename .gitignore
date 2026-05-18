@@ -1,14 +1,10 @@
 .env
 .env.*
 models/
-blob_storage/
-chroma_db/
-Images/
-pdfs/
-generated_slides.pptx
+data/
+outputs/
 download_models.py
 pyproject.toml
-documents/
 tests/__pycache__/
 tests/__init__.py
 src/mypackage.egg-info/

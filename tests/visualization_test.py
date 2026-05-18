@@ -1,5 +1,12 @@
-from src.graphs.visualization_graph import generate_visualization
-from src.states.visualization_state import DiagramType
+import sys
+from pathlib import Path
+
+src_path = Path(__file__).resolve().parents[1] / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+from smart_doc.features.visualization.graph import generate_visualization
+from smart_doc.features.visualization.state import DiagramType
 # answer = generate_visualization(
 #     description="""generate a state diagram that describes a video game player.
 #         He is either active, tired, energized, or dead. He is active by default. If he gets 
