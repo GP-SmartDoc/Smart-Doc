@@ -12,12 +12,14 @@ def add_pdf_file(
     file_path,
     documents_path,
     blob_storage_path,
+    file_hash,
     parent_splitter,
     child_splitter,
     yolo,
     device,
     ignored_layout_classes,
     get_collection,
+    detect_language,
     image_collection
 ):
     filename = os.path.basename(file_path)
@@ -37,15 +39,19 @@ def add_pdf_file(
             doc.page_content,
             filename,
             page_index,
+            file_hash,
             parent_splitter,
             child_splitter,
-            get_collection
+            get_collection,
+            detect_language,
+            os.path.abspath(file_path)
         )
 
         _index_page_images(
             pdf[page_index],
             filename,
             page_index,
+            file_hash,
             blob_storage_path,
             yolo,
             device,
@@ -60,9 +66,12 @@ def _index_page_text(
     page_content,
     filename,
     page_index,
+    file_hash,
     parent_splitter,
     child_splitter,
-    get_collection
+    get_collection,
+    detect_language,
+    source
 ):
     parent_chunks = parent_splitter.split_text(page_content)
 
@@ -70,6 +79,7 @@ def _index_page_text(
         child_chunks = child_splitter.split_text(parent)
 
         for c_id, child in enumerate(child_chunks):
+            language = detect_language(child)
             target_col = get_collection(child)
             target_col.add(
                 documents=[child],
@@ -78,7 +88,14 @@ def _index_page_text(
                 ],
                 metadatas=[{
                     "page": page_index,
-                    "document": filename
+                    "document": filename,
+                    "source": source,
+                    "file_hash": file_hash,
+                    "content_type": "text",
+                    "source_type": "pdf",
+                    "language": language,
+                    "parent_chunk_index": p_id,
+                    "child_chunk_index": c_id
                 }]
             )
 
@@ -87,6 +104,7 @@ def _index_page_images(
     page,
     filename,
     page_index,
+    file_hash,
     blob_storage_path,
     yolo,
     device,
@@ -134,6 +152,11 @@ def _index_page_images(
             metadatas=[{
                 "source": img_path,
                 "page": page_index,
-                "document": filename
+                "document": filename,
+                "file_hash": file_hash,
+                "content_type": "image",
+                "source_type": "pdf_crop",
+                "layout_class": class_name,
+                "detection_index": det_id
             }]
         )

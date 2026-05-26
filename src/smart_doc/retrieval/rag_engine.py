@@ -7,11 +7,12 @@ from smart_doc.retrieval.components import (
     create_collections,
     create_splitters,
     get_torch_device,
+    load_caption_model,
     load_yolo_model,
 )
 from smart_doc.retrieval.file_utils import compute_file_hash, list_pdf_documents
 from smart_doc.retrieval.image_ingestion import add_image_file, caption_image
-from smart_doc.retrieval.language import get_text_collection
+from smart_doc.retrieval.language import detect_text_language, get_text_collection
 from smart_doc.retrieval.pdf_ingestion import add_pdf_file
 from smart_doc.retrieval.query import query_collections
 from smart_doc.retrieval.text_ingestion import add_text_file
@@ -42,6 +43,8 @@ class RAGEngine:
         )
         self.__splitters = create_splitters(self.__config)
         self.__yolo = load_yolo_model(self.__config, self.__device)
+        self.__caption_processor = None
+        self.__caption_model = None
 
     def _compute_file_hash(self, file_path: str) -> str:
         return compute_file_hash(file_path)
@@ -54,30 +57,46 @@ class RAGEngine:
         )
 
     def add_txt(self, file_path):
+        file_hash = self._compute_file_hash(file_path)
         add_text_file(
             file_path,
             self.__splitters.child,
-            self._get_collection
+            self._get_collection,
+            detect_text_language,
+            file_hash
         )
 
     def _caption_image(self, pil_image):
+        self._ensure_caption_model()
         return caption_image(
             pil_image,
             self.__caption_processor,
             self.__caption_model
         )
 
+    def _ensure_caption_model(self):
+        if self.__caption_processor is not None and self.__caption_model is not None:
+            return
+
+        self.__caption_processor, self.__caption_model = load_caption_model(
+            self.__config,
+            self.__device
+        )
+
     def add_pdf(self, file_path):
+        file_hash = self._compute_file_hash(file_path)
         add_pdf_file(
             file_path,
             self.__documents_path,
             self.__blob_storage_path,
+            file_hash,
             self.__splitters.parent,
             self.__splitters.child,
             self.__yolo,
             self.__device,
             self.__config.ignored_layout_classes,
             self._get_collection,
+            detect_text_language,
             self.__collections.images
         )
 
@@ -106,12 +125,16 @@ class RAGEngine:
         )
 
     def add_image(self, file_path):
+        self._ensure_caption_model()
+        file_hash = self._compute_file_hash(file_path)
         add_image_file(
             file_path,
             self.__collections.images,
             self._get_collection,
+            detect_text_language,
             self.__caption_processor,
-            self.__caption_model
+            self.__caption_model,
+            file_hash
         )
 
     def query(

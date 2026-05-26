@@ -5,6 +5,7 @@ import torch
 from chromadb.utils import embedding_functions
 from chromadb.utils.data_loaders import ImageLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from transformers import BlipForConditionalGeneration, BlipProcessor
 from ultralytics import YOLO
 
 
@@ -14,6 +15,7 @@ class RAGConfig:
     arabic_embedding_model: str = "./models/GATE-AraBert-v1"
     image_embedding_model: str = "ViT-B-32"
     yolo_model_path: str = "./models/yolo11n_doc_layout.pt"
+    caption_model_path: str = "./models/blip-image-captioning-base"
     parent_chunk_size: int = 1500
     parent_chunk_overlap: int = 200
     child_chunk_size: int = 400
@@ -97,3 +99,11 @@ def load_yolo_model(config: RAGConfig, device: str):
     yolo = YOLO(config.yolo_model_path)
     yolo.to(device)
     return yolo
+
+
+def load_caption_model(config: RAGConfig, device: str):
+    processor = BlipProcessor.from_pretrained(config.caption_model_path)
+    model = BlipForConditionalGeneration.from_pretrained(config.caption_model_path)
+    model.to(device)
+    model.eval()
+    return processor, model
