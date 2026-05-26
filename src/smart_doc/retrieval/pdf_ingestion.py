@@ -1,0 +1,139 @@
+import io
+import os
+import shutil
+import uuid
+
+import fitz
+from langchain_community.document_loaders import PyMuPDFLoader
+from PIL import Image
+
+
+def add_pdf_file(
+    file_path,
+    documents_path,
+    blob_storage_path,
+    parent_splitter,
+    child_splitter,
+    yolo,
+    device,
+    ignored_layout_classes,
+    get_collection,
+    image_collection
+):
+    filename = os.path.basename(file_path)
+
+    stored_path = os.path.join(documents_path, filename)
+    if not os.path.exists(stored_path):
+        shutil.copy(file_path, stored_path)
+
+    file_path = stored_path
+
+    loader = PyMuPDFLoader(file_path)
+    docs = loader.load()
+    pdf = fitz.open(file_path)
+
+    for page_index, doc in enumerate(docs):
+        _index_page_text(
+            doc.page_content,
+            filename,
+            page_index,
+            parent_splitter,
+            child_splitter,
+            get_collection
+        )
+
+        _index_page_images(
+            pdf[page_index],
+            filename,
+            page_index,
+            blob_storage_path,
+            yolo,
+            device,
+            ignored_layout_classes,
+            image_collection
+        )
+
+    print(f"PDF indexed correctly: {filename}")
+
+
+def _index_page_text(
+    page_content,
+    filename,
+    page_index,
+    parent_splitter,
+    child_splitter,
+    get_collection
+):
+    parent_chunks = parent_splitter.split_text(page_content)
+
+    for p_id, parent in enumerate(parent_chunks):
+        child_chunks = child_splitter.split_text(parent)
+
+        for c_id, child in enumerate(child_chunks):
+            target_col = get_collection(child)
+            target_col.add(
+                documents=[child],
+                ids=[
+                    f"{filename}_p{page_index}_P{p_id}_C{c_id}"
+                ],
+                metadatas=[{
+                    "page": page_index,
+                    "document": filename
+                }]
+            )
+
+
+def _index_page_images(
+    page,
+    filename,
+    page_index,
+    blob_storage_path,
+    yolo,
+    device,
+    ignored_layout_classes,
+    image_collection
+):
+    pix = page.get_pixmap(dpi=200)
+    page_img = Image.open(
+        io.BytesIO(pix.tobytes("png"))
+    )
+
+    results = yolo(page_img, conf=0.5, device=device)
+    if not results:
+        return
+
+    result = results[0]
+
+    for det_id, box in enumerate(result.boxes):
+        class_id = int(box.cls[0])
+        class_name = result.names[class_id]
+
+        if class_name in ignored_layout_classes:
+            continue
+
+        x0, y0, x1, y1 = map(
+            int,
+            box.xyxy[0].tolist()
+        )
+
+        crop = page_img.crop(
+            (x0, y0, x1, y1)
+        )
+
+        img_path = os.path.join(
+            blob_storage_path,
+            f"{filename}_p{page_index}_fig{det_id}.png"
+        )
+
+        crop.save(img_path)
+        image_id = str(uuid.uuid4())
+
+        image_collection.add(
+            ids=[image_id],
+            uris=[os.path.abspath(img_path)],
+            metadatas=[{
+                "source": img_path,
+                "page": page_index,
+                "document": filename
+            }]
+        )

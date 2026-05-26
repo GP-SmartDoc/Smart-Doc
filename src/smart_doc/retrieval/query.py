@@ -1,0 +1,52 @@
+from smart_doc.utils.image import encode_image_from_path
+
+
+def query_collections(
+    prompt,
+    get_collection,
+    image_collection,
+    k_text=6,
+    k_image=4,
+    document=None
+):
+    where_filter = None
+
+    if document and document != "all":
+        where_filter = {
+            "document": document
+        }
+
+    target_col = get_collection(prompt)
+    text_res = target_col.query(
+        query_texts=[prompt],
+        n_results=k_text,
+        where=where_filter
+    )
+
+    img_res = image_collection.query(
+        query_texts=[prompt],
+        n_results=k_image,
+        where=where_filter,
+        include=["uris", "metadatas"]
+    )
+
+    encoded_images = []
+    paths = []
+
+    for uri, meta in zip(
+        img_res.get("uris", [[]])[0],
+        img_res.get("metadatas", [[]])[0]
+    ):
+        encoded_images.append(
+            encode_image_from_path(uri)
+        )
+        paths.append(uri)
+
+    return {
+        "text": text_res.get(
+            "documents",
+            [[]]
+        )[0],
+        "images": encoded_images,
+        "paths": paths
+    }
