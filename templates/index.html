@@ -519,6 +519,11 @@ fileInput.addEventListener("change", async function () {
         typing.textContent = "✅ Uploaded successfully";
 
       }
+      else if (data.skipped && data.skipped.includes(file.name)) {
+
+        typing.textContent = "Already indexed";
+
+      }
       // failed
       else {
 

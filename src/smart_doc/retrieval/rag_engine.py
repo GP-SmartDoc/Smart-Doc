@@ -10,7 +10,11 @@ from smart_doc.retrieval.components import (
     load_caption_model,
     load_yolo_model,
 )
-from smart_doc.retrieval.file_utils import compute_file_hash, list_pdf_documents
+from smart_doc.retrieval.file_utils import (
+    SUPPORTED_DOCUMENT_EXTENSIONS,
+    compute_file_hash,
+    list_supported_documents,
+)
 from smart_doc.retrieval.image_ingestion import add_image_file, caption_image
 from smart_doc.retrieval.language import (
     detect_text_language,
@@ -19,6 +23,7 @@ from smart_doc.retrieval.language import (
 )
 from smart_doc.retrieval.pdf_ingestion import add_pdf_file
 from smart_doc.retrieval.query import query_collections
+from smart_doc.retrieval.spreadsheet_ingestion import add_spreadsheet_file
 from smart_doc.retrieval.text_ingestion import add_text_file
 
 
@@ -55,6 +60,21 @@ class RAGEngine:
     def _compute_file_hash(self, file_path: str) -> str:
         return compute_file_hash(file_path)
 
+    def _is_file_indexed(self, file_hash: str) -> bool:
+        where = {"file_hash": file_hash}
+        collections = (
+            self.__collections.arabic_text,
+            self.__collections.english_text,
+            self.__collections.images,
+        )
+
+        for collection in collections:
+            result = collection.get(where=where, limit=1)
+            if result.get("ids"):
+                return True
+
+        return False
+
     def _get_collection(self, text):
         return get_text_collection(
             text,
@@ -71,6 +91,9 @@ class RAGEngine:
 
     def add_txt(self, file_path):
         file_hash = self._compute_file_hash(file_path)
+        if self._is_file_indexed(file_hash):
+            return {"status": "skipped", "reason": "duplicate_file"}
+
         add_text_file(
             file_path,
             self.__splitters.child,
@@ -78,6 +101,7 @@ class RAGEngine:
             detect_text_language,
             file_hash
         )
+        return {"status": "indexed"}
 
     def _caption_image(self, pil_image):
         self._ensure_caption_model()
@@ -104,9 +128,11 @@ class RAGEngine:
         self.__yolo = load_yolo_model(self.__config, self.__device)
 
     def add_pdf(self, file_path):
-        self._ensure_yolo_model()
-
         file_hash = self._compute_file_hash(file_path)
+        if self._is_file_indexed(file_hash):
+            return {"status": "skipped", "reason": "duplicate_file"}
+
+        self._ensure_yolo_model()
         add_pdf_file(
             file_path,
             self.__documents_path,
@@ -121,6 +147,7 @@ class RAGEngine:
             detect_text_language,
             self.__collections.images
         )
+        return {"status": "indexed"}
 
     def add_file(self, path: str):
         """
@@ -141,14 +168,20 @@ class RAGEngine:
         if extension in {".png", ".jpg", ".jpeg", ".webp"}:
             return self.add_image(path)
 
-        supported = ".pdf, .txt, .png, .jpg, .jpeg, .webp"
+        if extension in {".xlsx", ".csv"}:
+            return self.add_spreadsheet(path)
+
+        supported = ", ".join(sorted(SUPPORTED_DOCUMENT_EXTENSIONS))
         raise ValueError(
             f"Unsupported file type '{extension}'. Supported types: {supported}"
         )
 
     def add_image(self, file_path):
-        self._ensure_caption_model()
         file_hash = self._compute_file_hash(file_path)
+        if self._is_file_indexed(file_hash):
+            return {"status": "skipped", "reason": "duplicate_file"}
+
+        self._ensure_caption_model()
         add_image_file(
             file_path,
             self.__collections.images,
@@ -158,6 +191,21 @@ class RAGEngine:
             self.__caption_model,
             file_hash
         )
+        return {"status": "indexed"}
+
+    def add_spreadsheet(self, file_path):
+        file_hash = self._compute_file_hash(file_path)
+        if self._is_file_indexed(file_hash):
+            return {"status": "skipped", "reason": "duplicate_file"}
+
+        add_spreadsheet_file(
+            file_path,
+            self.__splitters.child,
+            self._get_collection_by_language,
+            detect_text_language,
+            file_hash
+        )
+        return {"status": "indexed"}
 
     def query(
         self,
@@ -178,4 +226,4 @@ class RAGEngine:
         )
 
     def list_documents(self):
-        return list_pdf_documents(self.__documents_path)
+        return list_supported_documents(self.__documents_path)

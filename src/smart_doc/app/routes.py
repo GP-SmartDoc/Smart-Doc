@@ -137,20 +137,29 @@ def receive_message(data: ChatRequest):
 @router.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
     uploaded_files = []
+    skipped_files = []
     failed_files = []
 
     for file in files:
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file_existed = os.path.exists(file_path)
 
         try:
             with open(file_path, "wb") as f:
                 f.write(await file.read())
 
-            rag.add_pdf(file_path)
-            print("PDF successfully indexed.")
-            uploaded_files.append(file.filename)
+            result = rag.add_file(file_path)
+            print(f"File ingestion result for {file.filename}: {result}")
+            if result.get("status") == "skipped":
+                if not file_existed and os.path.exists(file_path):
+                    os.remove(file_path)
+                skipped_files.append(file.filename)
+            else:
+                uploaded_files.append(file.filename)
 
         except Exception as e:
+            if not file_existed and os.path.exists(file_path):
+                os.remove(file_path)
             print(f"Error uploading {file.filename}: {e}")
             failed_files.append(
                 {
@@ -161,6 +170,6 @@ async def upload_files(files: List[UploadFile] = File(...)):
 
     return {
         "uploaded": uploaded_files,
+        "skipped": skipped_files,
         "failed": failed_files,
     }
-
