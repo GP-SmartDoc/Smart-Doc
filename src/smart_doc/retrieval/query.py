@@ -7,7 +7,8 @@ def query_collections(
     image_collection,
     k_text=6,
     k_image=4,
-    document=None
+    document=None,
+    include_encoded_images=True
 ):
     where_filter = None
 
@@ -33,13 +34,16 @@ def query_collections(
     encoded_images = []
     paths = []
 
+    # Encoding images is useful for multimodal QA, but callers that only need
+    # file paths can skip it to avoid extra disk I/O and base64 work.
     for uri, meta in zip(
         img_res.get("uris", [[]])[0],
         img_res.get("metadatas", [[]])[0]
     ):
-        encoded_images.append(
-            encode_image_from_path(uri)
-        )
+        if include_encoded_images:
+            encoded_images.append(
+                encode_image_from_path(uri)
+            )
         paths.append(uri)
 
     return {

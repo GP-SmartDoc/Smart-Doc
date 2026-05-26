@@ -31,7 +31,7 @@ def caption_image(pil_image, caption_processor, caption_model):
 def add_image_file(
     file_path,
     image_collection,
-    get_collection,
+    get_collection_by_language,
     detect_language,
     caption_processor,
     caption_model,
@@ -56,7 +56,7 @@ def add_image_file(
         }]
     )
 
-    get_collection(caption).add(
+    get_collection_by_language(caption_language).add(
         documents=[caption],
         ids=[f"{image_id}_caption"],
         metadatas=[{

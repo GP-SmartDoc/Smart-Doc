@@ -12,7 +12,11 @@ from smart_doc.retrieval.components import (
 )
 from smart_doc.retrieval.file_utils import compute_file_hash, list_pdf_documents
 from smart_doc.retrieval.image_ingestion import add_image_file, caption_image
-from smart_doc.retrieval.language import detect_text_language, get_text_collection
+from smart_doc.retrieval.language import (
+    detect_text_language,
+    get_text_collection,
+    get_text_collection_by_language,
+)
 from smart_doc.retrieval.pdf_ingestion import add_pdf_file
 from smart_doc.retrieval.query import query_collections
 from smart_doc.retrieval.text_ingestion import add_text_file
@@ -42,7 +46,9 @@ class RAGEngine:
             self.__config
         )
         self.__splitters = create_splitters(self.__config)
-        self.__yolo = load_yolo_model(self.__config, self.__device)
+
+        # Heavy vision models are loaded only when their ingestion paths need them.
+        self.__yolo = None
         self.__caption_processor = None
         self.__caption_model = None
 
@@ -56,12 +62,19 @@ class RAGEngine:
             self.__collections.english_text
         )
 
+    def _get_collection_by_language(self, language):
+        return get_text_collection_by_language(
+            language,
+            self.__collections.arabic_text,
+            self.__collections.english_text
+        )
+
     def add_txt(self, file_path):
         file_hash = self._compute_file_hash(file_path)
         add_text_file(
             file_path,
             self.__splitters.child,
-            self._get_collection,
+            self._get_collection_by_language,
             detect_text_language,
             file_hash
         )
@@ -83,7 +96,16 @@ class RAGEngine:
             self.__device
         )
 
+    def _ensure_yolo_model(self):
+        if self.__yolo is not None:
+            return
+
+        # YOLO is only needed for PDF image extraction, not normal querying.
+        self.__yolo = load_yolo_model(self.__config, self.__device)
+
     def add_pdf(self, file_path):
+        self._ensure_yolo_model()
+
         file_hash = self._compute_file_hash(file_path)
         add_pdf_file(
             file_path,
@@ -95,7 +117,7 @@ class RAGEngine:
             self.__yolo,
             self.__device,
             self.__config.ignored_layout_classes,
-            self._get_collection,
+            self._get_collection_by_language,
             detect_text_language,
             self.__collections.images
         )
@@ -130,7 +152,7 @@ class RAGEngine:
         add_image_file(
             file_path,
             self.__collections.images,
-            self._get_collection,
+            self._get_collection_by_language,
             detect_text_language,
             self.__caption_processor,
             self.__caption_model,
@@ -142,7 +164,8 @@ class RAGEngine:
         prompt,
         k_text=6,
         k_image=4,
-        document=None
+        document=None,
+        include_encoded_images=True
     ):
         return query_collections(
             prompt,
@@ -150,7 +173,8 @@ class RAGEngine:
             self.__collections.images,
             k_text=k_text,
             k_image=k_image,
-            document=document
+            document=document,
+            include_encoded_images=include_encoded_images
         )
 
     def list_documents(self):

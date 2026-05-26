@@ -18,7 +18,7 @@ def add_pdf_file(
     yolo,
     device,
     ignored_layout_classes,
-    get_collection,
+    get_collection_by_language,
     detect_language,
     image_collection
 ):
@@ -42,7 +42,7 @@ def add_pdf_file(
             file_hash,
             parent_splitter,
             child_splitter,
-            get_collection,
+            get_collection_by_language,
             detect_language,
             os.path.abspath(file_path)
         )
@@ -69,35 +69,44 @@ def _index_page_text(
     file_hash,
     parent_splitter,
     child_splitter,
-    get_collection,
+    get_collection_by_language,
     detect_language,
     source
 ):
     parent_chunks = parent_splitter.split_text(page_content)
+    batches = {}
 
     for p_id, parent in enumerate(parent_chunks):
         child_chunks = child_splitter.split_text(parent)
 
         for c_id, child in enumerate(child_chunks):
             language = detect_language(child)
-            target_col = get_collection(child)
-            target_col.add(
-                documents=[child],
-                ids=[
-                    f"{filename}_p{page_index}_P{p_id}_C{c_id}"
-                ],
-                metadatas=[{
-                    "page": page_index,
-                    "document": filename,
-                    "source": source,
-                    "file_hash": file_hash,
-                    "content_type": "text",
-                    "source_type": "pdf",
-                    "language": language,
-                    "parent_chunk_index": p_id,
-                    "child_chunk_index": c_id
-                }]
+            target_col = get_collection_by_language(language)
+            batch = batches.setdefault(
+                language,
+                {"collection": target_col, "documents": [], "ids": [], "metadatas": []}
             )
+            batch["documents"].append(child)
+            batch["ids"].append(f"{filename}_p{page_index}_P{p_id}_C{c_id}")
+            batch["metadatas"].append({
+                "page": page_index,
+                "document": filename,
+                "source": source,
+                "file_hash": file_hash,
+                "content_type": "text",
+                "source_type": "pdf",
+                "language": language,
+                "parent_chunk_index": p_id,
+                "child_chunk_index": c_id
+            })
+
+    # One add per language collection is much cheaper than one add per chunk.
+    for batch in batches.values():
+        batch["collection"].add(
+            documents=batch["documents"],
+            ids=batch["ids"],
+            metadatas=batch["metadatas"]
+        )
 
 
 def _index_page_images(
