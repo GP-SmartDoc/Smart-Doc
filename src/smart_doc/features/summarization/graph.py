@@ -7,15 +7,11 @@ from smart_doc.features.summarization.agents.two_step_image_agents import image_
 from smart_doc.utils.compression_budget import compute_budget
 from smart_doc.features.summarization.summary_modes import SummaryMode, MODE_CONFIG
 
-# =========================
-# STATE
-# =========================
+
 class SummarizerState(TypedDict, total=False):
-    llm_calls: Annotated[int, operator.add]  # <-- fix here
-    intent: str
+    llm_calls: Annotated[int, operator.add]
     user_question: str
     retrieved_text_chunks: list
-    retrieved_images: list
     image_captions: list
     text_summary: str
     image_summary: str
@@ -28,24 +24,19 @@ class SummarizerState(TypedDict, total=False):
     final_summary: dict
 
 
-# =========================
-# GRAPH MODULE
-# =========================
-# =========================
 class SummarizationModule:
     def __init__(self, retriever):
         self.retriever = retriever
 
         g = StateGraph(SummarizerState)
 
-        # ---------- Nodes ----------
         g.add_node("text_analyst", text_analyst_agent)
         g.add_node("image_analyst", image_analyst_agent)
         g.add_node("text_aggregator", text_aggregator_agent)
         g.add_node("image_aggregator", image_aggregator_agent)
         g.add_node("synthesis", synthesis_agent)
 
-        # ---------- Edges ----------
+        # Text and image evidence are summarized independently, then merged once.
         g.add_edge(START, "text_analyst")
         g.add_edge(START, "image_analyst")
         g.add_edge("text_analyst", "text_aggregator")
@@ -61,7 +52,6 @@ class SummarizationModule:
         Invokes the summarization pipeline.
         summary_mode: one of 'snapshot', 'overview', 'deepdive'
         """
-        # Validate summary mode
         try:
             mode_enum = SummaryMode(summary_mode)
         except ValueError:
@@ -72,28 +62,22 @@ class SummarizationModule:
         if len(question.split()) <= 5 and any(w in question.lower() for w in ["summary", "brief", "detail"]):
             search_query = "abstract introduction main contribution methodology conclusion"
 
-        # Retrieve relevant content
         retrieved = self.retriever.query(search_query, k_text=6, k_image=4, document=document)
 
-        # Compute token budget
         text = " ".join(retrieved.get("text", []))
         doc_tokens = max(1, len(text) // 4)
         config = MODE_CONFIG[mode_enum]
         budget = compute_budget(doc_tokens, config)
 
-        # Ensure minimum budget for non-snapshot modes
         if mode_enum != SummaryMode.SNAPSHOT:
             budget = max(budget, 60)
 
         detail = config["detail"]
 
-        # Build initial state
         state = {
             "llm_calls": 0,
-            "intent": "summary",
             "user_question": question,
             "retrieved_text_chunks": retrieved.get("text", []),
-            "retrieved_images": retrieved.get("images", []),
             "image_captions": retrieved.get("captions", []),
             "text_chunk_summaries": [],
             "image_answers": [],
@@ -105,6 +89,5 @@ class SummarizationModule:
             "detail_level": detail,
         }
 
-        # Run the graph
         result = self.app.invoke(state)
         return result["final_summary"]

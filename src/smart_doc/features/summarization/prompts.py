@@ -1,36 +1,6 @@
-# src/config/summarization_prompts.py
 
-# -------------------------------
-# General Agent (GA) - cross-modal
-# -------------------------------
-GA_SYSTEM_PROMPT = """  
-You are an advanced agent capable of analyzing both text and images. Your task is to answer the user's question accurately by combining textual and visual information.
 
-Instructions:
-- Extract Text from Both Sources: Read and extract any text visibly present in the image and consider it along with the provided textual content.
-- Analyze Visual and Textual Information: Combine relevant details from both the image and the text to build a comprehensive understanding.
-- Resolve Conflicts: If the text and image provide conflicting information, explain discrepancies and clarify the most reliable source.
-- Provide a Combined Answer: Include all relevant details while being concise and context-aware.
-"""
-
-# -------------------------------
-# Critical Agent (CA) - text & image keypoints
-# -------------------------------
-CA_SYSTEM_PROMPT = """
-Provide a valid JSON object with 2 keys, representing essential insights:
-- "text": A comprehensive bulleted list of key information and facts from text sources.
-- "image": A comprehensive bulleted list of key information and facts from image sources.
-
-CRITICAL INSTRUCTION:
-Do not summarize or compress the information into a single sentence. Preserve the exact depth, granularity, and detail provided in the input summaries. Your job is to extract and structure the facts, not reduce them.
-
-Respond exclusively in valid JSON format without extra text. Use double quotes for keys and string values.
-Example: {"text": "- Fact 1\n- Fact 2", "image": "- Fact 1"}
-"""
-
-# -------------------------------
 # Text Analysis Agent (TA)
-# -------------------------------
 TA_SYSTEM_PROMPT = """
 You are a text analysis agent. Extract key information from the provided text to answer the user's question accurately.
 
@@ -40,9 +10,7 @@ Instructions:
 - Provide a Clear Answer: Concise, relevant, and only from the provided text.
 """
 
-# -------------------------------
 # Image Analysis Agent (IA)
-# -------------------------------
 IA_SYSTEM_PROMPT = """
 You are an image analysis agent specialized in extracting information from images (document screenshots, illustrations, photos).
 
@@ -53,9 +21,7 @@ Instructions:
 - State explicitly if no relevant information can be extracted.
 """
 
-# -------------------------------
 # Text Modality Aggregation Agent
-# -------------------------------
 TA_MODALITY_SYSTEM_PROMPT = """
 You are a text modality aggregation agent.
 
@@ -77,9 +43,7 @@ Tasks:
 - Do NOT introduce new information
 """
 
-# -------------------------------
 # Image Modality Aggregation Agent
-# -------------------------------
 IA_MODALITY_SYSTEM_PROMPT = """
 You are an image modality aggregation agent.
 
@@ -101,9 +65,7 @@ Tasks:
 - Use ONLY the provided image summaries
 """
 
-# -------------------------------
 # Synthesis Agent (SA)
-# -------------------------------
 SA_SYSTEM_PROMPT = """
 You are a multi-agent synthesis engine. Your task is to merge responses from text and image agents into a single structured result.
 

@@ -9,10 +9,6 @@ load_dotenv()
 MODEL_BACKEND = os.getenv("MODEL_BACKEND", "groq").lower()
 TEMPERATURE = float(os.getenv("MODEL_TEMPERATURE", 0))
 
-# ===============================
-# SUMMARIZATION TEXT MODEL
-# ===============================
-
 if MODEL_BACKEND == "groq":
     text_model = ChatGroq(
         model=os.getenv(
@@ -52,10 +48,6 @@ elif MODEL_BACKEND == "ollama":
 
 else:
     raise ValueError(f"Unsupported MODEL_BACKEND: {MODEL_BACKEND}")
-
-# ===============================
-# OPTIONAL IMAGE / MULTIMODAL MODEL
-# ===============================
 
 visualization_model = ChatGroq(
     model=os.getenv(

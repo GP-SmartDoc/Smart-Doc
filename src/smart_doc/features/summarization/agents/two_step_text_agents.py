@@ -1,44 +1,37 @@
 from langchain.messages import SystemMessage, HumanMessage
 from smart_doc.core.models import text_model as model
 import smart_doc.features.summarization.prompts as prompts
-import smart_doc.features.question_answering.prompts as qprompts
 import json
 
+MAX_TEXT_CHARS = 4000
+
+
 def text_analyst_agent(state: dict, model=model):
-    intent = state.get("intent", "qa")
-    detail_level = state.get("detail_level", 2)  # from mode_controller
+    detail_level = state.get("detail_level", 2)
 
     all_text = state.get("retrieved_text_chunks", [])
     if not all_text:
         all_text = ["No relevant text found."]
 
-    # ---------------------------
-    # Decoupled Input Context
-    # Give the LLM a generous 4000 characters to read, regardless of output size
-    # ---------------------------
-    max_chars = 4000 
+    # Keep input size stable while preserving at least the beginning of the first chunk.
     truncated_text = []
     total_chars = 0
-    
+
     for i, chunk in enumerate(all_text):
-        if total_chars + len(chunk) > max_chars:
-            # Always include at least the first chunk even if over the max_chars limit
+        if total_chars + len(chunk) > MAX_TEXT_CHARS:
             if i == 0:
-                truncated_text.append(chunk[: max_chars] + "...")
+                truncated_text.append(chunk[:MAX_TEXT_CHARS] + "...")
             break
         truncated_text.append(chunk)
         total_chars += len(chunk)
 
-    # fallback if truncation leaves nothing
     if not truncated_text and all_text:
-        truncated_text = [all_text[0][: max_chars] + "..."]
+        truncated_text = [all_text[0][:MAX_TEXT_CHARS] + "..."]
 
     merged_text = "\n\n".join(truncated_text)
 
-    # Choose prompt based on intent
-    system_prompt = prompts.TA_SYSTEM_PROMPT if intent == "summary" else qprompts.QA_TA_SYSTEM_PROMPT
     resp = model.invoke([
-        SystemMessage(content=system_prompt),
+        SystemMessage(content=prompts.TA_SYSTEM_PROMPT),
         HumanMessage(content=f"""
             Question:
             {state.get("user_question", "")}
@@ -55,30 +48,20 @@ def text_analyst_agent(state: dict, model=model):
         "llm_calls": 1
     }
 
-def text_aggregator_agent(state: dict, model=model):
-    intent = state.get("intent", "qa")
 
-    if intent == "summary":
-        system_prompt = prompts.TA_MODALITY_SYSTEM_PROMPT
-        payload = {
-            "question": state.get("user_question", ""),
-            "summaries": state.get("text_chunk_summaries", [])
-        }
-        out_key = "text_summary"
-    else:
-        system_prompt = qprompts.QA_GA_SYSTEM_PROMPT
-        payload = {
-            "question": state.get("user_question", ""),
-            "text_evidence": state.get("text_evidence", [])
-        }
-        out_key = "text_answer"
+def text_aggregator_agent(state: dict, model=model):
+    payload = {
+        "question": state.get("user_question", ""),
+        "detail_level": state.get("detail_level", 2),
+        "summaries": state.get("text_chunk_summaries", [])
+    }
 
     resp = model.invoke([
-        SystemMessage(content=system_prompt),
+        SystemMessage(content=prompts.TA_MODALITY_SYSTEM_PROMPT),
         HumanMessage(content=json.dumps(payload))
     ])
-    print("[DEBUG] Text summary:", resp.content)
+
     return {
-        out_key: resp.content,
+        "text_summary": resp.content,
         "llm_calls": 1
     }
