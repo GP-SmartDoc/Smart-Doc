@@ -1,10 +1,9 @@
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
-from smart_doc.features.summarization.agents.summarization_agent import summarization_agent
-from smart_doc.features.summarization.agents.critical_agent import critical_agent
-from smart_doc.features.summarization.agents.two_step_text_agents import text_micro_agent, text_modality_agent
-from smart_doc.features.summarization.agents.two_step_image_agents import image_micro_agent, image_modality_agent
+from smart_doc.features.summarization.agents.summarization_agent import synthesis_agent
+from smart_doc.features.summarization.agents.two_step_text_agents import text_analyst_agent, text_aggregator_agent
+from smart_doc.features.summarization.agents.two_step_image_agents import image_analyst_agent, image_aggregator_agent
 from smart_doc.utils.compression_budget import compute_budget
 from smart_doc.features.summarization.summary_modes import SummaryMode, MODE_CONFIG
 
@@ -20,8 +19,6 @@ class SummarizerState(TypedDict, total=False):
     image_captions: list
     text_summary: str
     image_summary: str
-    cross_modal_analysis: dict
-
     text_chunk_summaries: list
     image_answers: list
     summary_mode: str
@@ -34,6 +31,7 @@ class SummarizerState(TypedDict, total=False):
 # =========================
 # GRAPH MODULE
 # =========================
+# =========================
 class SummarizationModule:
     def __init__(self, retriever):
         self.retriever = retriever
@@ -41,22 +39,20 @@ class SummarizationModule:
         g = StateGraph(SummarizerState)
 
         # ---------- Nodes ----------
-        g.add_node("text_micro", text_micro_agent)
-        g.add_node("image_micro", image_micro_agent)
-        g.add_node("text_merge", text_modality_agent)
-        g.add_node("image_merge", image_modality_agent)
-        g.add_node("critical", critical_agent)
-        g.add_node("final", summarization_agent)
+        g.add_node("text_analyst", text_analyst_agent)
+        g.add_node("image_analyst", image_analyst_agent)
+        g.add_node("text_aggregator", text_aggregator_agent)
+        g.add_node("image_aggregator", image_aggregator_agent)
+        g.add_node("synthesis", synthesis_agent)
 
         # ---------- Edges ----------
-        g.add_edge(START, "text_micro")
-        g.add_edge(START, "image_micro")
-        g.add_edge("text_micro", "text_merge")
-        g.add_edge("image_micro", "image_merge")
-        g.add_edge("text_merge", "critical")
-        g.add_edge("image_merge", "critical")
-        g.add_edge("critical", "final")
-        g.add_edge("final", END)
+        g.add_edge(START, "text_analyst")
+        g.add_edge(START, "image_analyst")
+        g.add_edge("text_analyst", "text_aggregator")
+        g.add_edge("image_analyst", "image_aggregator")
+        g.add_edge("text_aggregator", "synthesis")
+        g.add_edge("image_aggregator", "synthesis")
+        g.add_edge("synthesis", END)
 
         self.app = g.compile()
 
@@ -103,7 +99,6 @@ class SummarizationModule:
             "image_answers": [],
             "text_summary": "",
             "image_summary": "",
-            "cross_modal_analysis": {},
             "final_summary": {},
             "summary_mode": mode_enum.value,
             "token_budget": budget,

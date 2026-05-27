@@ -1,7 +1,7 @@
 # src/config/summarization_prompts.py
 
 # -------------------------------
-# General Agent (GA) – cross-modal
+# General Agent (GA) - cross-modal
 # -------------------------------
 GA_SYSTEM_PROMPT = """  
 You are an advanced agent capable of analyzing both text and images. Your task is to answer the user's question accurately by combining textual and visual information.
@@ -14,7 +14,7 @@ Instructions:
 """
 
 # -------------------------------
-# Critical Agent (CA) – text & image keypoints
+# Critical Agent (CA) - text & image keypoints
 # -------------------------------
 CA_SYSTEM_PROMPT = """
 Provide a valid JSON object with 2 keys, representing essential insights:
@@ -62,7 +62,7 @@ You are a text modality aggregation agent.
 Inputs:
 - Multiple text summaries
 - User question
-- DETAIL_LEVEL (1–3) controlling the amount of detail
+- DETAIL_LEVEL (1-3) controlling the amount of detail
 
 Detail Level Guide:
 1: Highly compressed, just the core facts.
@@ -86,7 +86,7 @@ You are an image modality aggregation agent.
 Inputs:
 - Multiple image analysis summaries
 - User question
-- DETAIL_LEVEL (1–3) controlling the amount of detail
+- DETAIL_LEVEL (1-3) controlling the amount of detail
 
 Detail Level Guide:
 1: Highly compressed, just the core visual facts.
@@ -110,7 +110,7 @@ You are a multi-agent synthesis engine. Your task is to merge responses from tex
 Control Parameters:
 - MODE: {mode}  # snapshot / overview / deepdive
 - MAX_TOKENS: {budget}  # strict maximum length
-- DETAIL_LEVEL: {detail}  # 1–3, controlling amount of detail
+- DETAIL_LEVEL: {detail}  # 1-3, controlling amount of detail
 
 Mode Definitions & Strict Length Constraints:
 SNAPSHOT (Detail Level 1):

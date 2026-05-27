@@ -22,6 +22,7 @@ from smart_doc.features.summarization.graph import SummarizationModule
 from smart_doc.features.visualization.rag_graph import VisualizationModule
 from smart_doc.features.visualization.state import DiagramType
 from smart_doc.retrieval.rag_engine import RAGEngine
+from smart_doc.utils.helper import safe_json_parse
 from smart_doc.utils.pptx import save_as_pptx
 
 
@@ -67,6 +68,17 @@ memory = ChatMemory()
 print("System Ready.\n")
 
 
+def extract_answer(result) -> str:
+    parsed = safe_json_parse(result, {"Answer": str(result)})
+    answer = parsed.get("Answer", str(result)) if isinstance(parsed, dict) else str(parsed)
+
+    nested = safe_json_parse(answer, {})
+    if isinstance(nested, dict) and "Answer" in nested:
+        return nested["Answer"]
+
+    return str(answer)
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(
@@ -91,7 +103,7 @@ def receive_message(data: ChatRequest):
             question=enhanced_question,
             document=document,
         )
-        clean_answer = result["Answer"][12:-2]
+        clean_answer = extract_answer(result)
         reply = formatting.format_qa_output(clean_answer)
 
     elif data.mode == "summary":
@@ -102,9 +114,7 @@ def receive_message(data: ChatRequest):
             summary_mode=data.summary_mode,
         )
 
-        clean_answer = result["Answer"]
-        if clean_answer and clean_answer[0] == "{":
-            clean_answer = clean_answer[12:-2]
+        clean_answer = extract_answer(result)
 
         reply = formatting.format_summarize_output(clean_answer)
 

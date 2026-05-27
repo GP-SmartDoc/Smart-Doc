@@ -4,7 +4,7 @@ import smart_doc.features.summarization.prompts as prompts
 import smart_doc.features.question_answering.prompts as qprompts
 import json
 
-def text_micro_agent(state: dict, model=model):
+def text_analyst_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
     detail_level = state.get("detail_level", 2)  # from mode_controller
 
@@ -24,14 +24,14 @@ def text_micro_agent(state: dict, model=model):
         if total_chars + len(chunk) > max_chars:
             # Always include at least the first chunk even if over the max_chars limit
             if i == 0:
-                truncated_text.append(chunk[: max_chars] + "…")
+                truncated_text.append(chunk[: max_chars] + "...")
             break
         truncated_text.append(chunk)
         total_chars += len(chunk)
 
     # fallback if truncation leaves nothing
     if not truncated_text and all_text:
-        truncated_text = [all_text[0][: max_chars] + "…"]
+        truncated_text = [all_text[0][: max_chars] + "..."]
 
     merged_text = "\n\n".join(truncated_text)
 
@@ -55,7 +55,7 @@ def text_micro_agent(state: dict, model=model):
         "llm_calls": 1
     }
 
-def text_modality_agent(state: dict, model=model):
+def text_aggregator_agent(state: dict, model=model):
     intent = state.get("intent", "qa")
 
     if intent == "summary":

@@ -2,8 +2,21 @@ import json
 import re
 
 def safe_json_parse(text, fallback):
+    if isinstance(text, dict):
+        return text
+
+    cleaned = re.sub(r"```json|```", "", str(text)).strip()
+
     try:
-        text = re.sub(r"```json|```", "", text).strip()
-        return json.loads(text)
+        return json.loads(cleaned)
     except Exception:
-        return fallback
+        pass
+
+    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except Exception:
+            pass
+
+    return fallback
