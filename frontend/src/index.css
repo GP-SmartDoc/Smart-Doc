@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+.mermaid svg {
+  max-width: none !important;
+}
+
+.mermaid .nodeLabel,
+.mermaid .edgeLabel {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.3 !important;
+}

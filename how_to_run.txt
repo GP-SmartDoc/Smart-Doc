@@ -1,3 +1,12 @@
-uvicorn --app-dir src smart_doc.app.main:app --reload
+#inside frontend folder run only once
+npm install
+npm install mermaid
+npm install --save-dev concurrently wait-on
+
+#in frontend folder package.json
+change path to your env 
+
+#to run inside frontend
+npm run dev
 
 ##to run visualization type in cmd while you at SmartDoc " python -m tests.visualization_test "
