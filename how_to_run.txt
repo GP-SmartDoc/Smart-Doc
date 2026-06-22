@@ -3,8 +3,8 @@ npm install
 npm install mermaid
 npm install --save-dev concurrently wait-on
 
-#in frontend folder package.json
-change path to your env 
+#in frontend folder package.json in scripts "backend"
+change path of my env to your env 
 
 #to run inside frontend
 npm run dev
