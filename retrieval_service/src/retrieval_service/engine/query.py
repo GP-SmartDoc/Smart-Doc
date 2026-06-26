@@ -20,20 +20,26 @@ def query_collections(
         }
 
     target_col = get_collection(prompt)
-    text_res = target_col.query(
-        query_texts=[prompt],
-        n_results=k_text,
-        where=where_filter,
-        include=["documents", "metadatas"]
-    )
+    text_res = {}
+    if k_text > 0 and target_col.count() > 0:
+        text_res = target_col.query(
+            query_texts=[prompt],
+            n_results=k_text,
+            where=where_filter,
+            include=["documents", "metadatas"]
+        )
 
-    img_res = image_collection.query(
-        query_texts=[prompt],
-        n_results=k_image,
-        where=where_filter,
-        include=["uris", "metadatas"]
-    )
-
+    img_res = {}
+    if k_image > 0 and image_collection.count() > 0:
+        # Since where_filter might further reduce counts, this is safe.
+        # But we must limit n_results to the actual count to avoid ChromaDB warnings.
+        # However, count() is for the entire collection, so n_results=k_image is fine.
+        img_res = image_collection.query(
+            query_texts=[prompt],
+            n_results=k_image,
+            where=where_filter,
+            include=["uris", "metadatas"]
+        )
     encoded_images = []
     paths = []
     image_metadata = img_res.get("metadatas", [[]])[0]

@@ -1,0 +1,278 @@
+[
+    {
+        "Id": "6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218",
+        "Created": "2026-06-26T17:23:17.011382667Z",
+        "Path": "uvicorn",
+        "Args": [
+            "--app-dir",
+            "src",
+            "retrieval_service.main:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8000"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 96507,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-06-26T17:39:37.218194311Z",
+            "FinishedAt": "2026-06-26T17:38:45.577837242Z"
+        },
+        "Image": "sha256:6fc3473dfb1dd99a2f02e9c0064791d98a3216ef4e51ca1dd49ae776d0e30949",
+        "ResolvConfPath": "/var/lib/docker/containers/6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218/hostname",
+        "HostsPath": "/var/lib/docker/containers/6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218/hosts",
+        "LogPath": "/var/lib/docker/containers/6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218/6327d81f48f113f8c2621e2a82ea6b657ad130b2220c05ba2434aac44a1fc218-json.log",
+        "Name": "/smart-doc-retrieval-api-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/home/yoyo/Youssef/COLLEGE/GP/Smart-Doc/retrieval_service:/app:rw",
+                "smart-doc_shared_data:/app/data:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "smart-doc_default",
+            "PortBindings": {
+                "8000/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "8001"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/home/yoyo/Youssef/COLLEGE/GP/Smart-Doc/retrieval_service",
+                "Destination": "/app",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "volume",
+                "Name": "smart-doc_shared_data",
+                "Source": "/var/lib/docker/volumes/smart-doc_shared_data/_data",
+                "Destination": "/app/data",
+                "Driver": "local",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "6327d81f48f1",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "8000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PYTHONUNBUFFERED=1",
+                "CELERY_BROKER_URL=redis://redis:6379/0",
+                "CHROMA_HOST=chromadb",
+                "CHROMA_PORT=8000",
+                "HF_HUB_OFFLINE=1",
+                "TRANSFORMERS_OFFLINE=1",
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+                "PYTHON_VERSION=3.10.20",
+                "PYTHON_SHA256=de6517421601e39a9a3bc3e1bc4c7b2f239297423ee05e282598c83ec0647505"
+            ],
+            "Cmd": [
+                "uvicorn",
+                "--app-dir",
+                "src",
+                "retrieval_service.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "Image": "smart-doc-retrieval-api",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "ae4dc454e4a4925988fd3808f94a952d2e22b6e3aa756c7f01cafb4d2719a000",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "chromadb:service_started:false,redis:service_started:false",
+                "com.docker.compose.image": "sha256:6fc3473dfb1dd99a2f02e9c0064791d98a3216ef4e51ca1dd49ae776d0e30949",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "smart-doc",
+                "com.docker.compose.project.config_files": "/home/yoyo/Youssef/COLLEGE/GP/Smart-Doc/docker-compose.yml",
+                "com.docker.compose.project.working_dir": "/home/yoyo/Youssef/COLLEGE/GP/Smart-Doc",
+                "com.docker.compose.replace": "retrieval-api-1",
+                "com.docker.compose.service": "retrieval-api",
+                "com.docker.compose.version": "5.1.4"
+            },
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "7fc795d201ec3f63dbd238e5cf82a8a1393a387b6fa0175d3745d36ca630e91c",
+            "SandboxKey": "/var/run/docker/netns/7fc795d201ec",
+            "Ports": {
+                "8000/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "8001"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "8001"
+                    }
+                ]
+            },
+            "Networks": {
+                "smart-doc_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "smart-doc-retrieval-api-1",
+                        "retrieval-api"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "344bc55bebd58b514565651e8c79db08bd8bbb6bd451987a153646ba4d94afa9",
+                    "EndpointID": "27cd64b35413b5a5f8d7f532f21da2d01fcb12c5f16d9e63e178d8ca3bdce808",
+                    "Gateway": "172.19.0.1",
+                    "IPAddress": "172.19.0.3",
+                    "MacAddress": "f6:9e:66:56:5d:27",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "smart-doc-retrieval-api-1",
+                        "retrieval-api",
+                        "6327d81f48f1"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:3a903433d96439cf5afb3fb067335e7bada8e507ca687991275b5f2a2c2a2ecf",
+            "size": 2013,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

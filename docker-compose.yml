@@ -5,6 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: always
     ports:
       - "8000:8000"
     volumes:
@@ -14,7 +15,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RETRIEVAL_SERVICE_URL=http://retrieval-api:8000
     env_file:
-      - .env.example
+      - .env
     depends_on:
       - retrieval-api
 
@@ -22,6 +23,7 @@ services:
     build:
       context: ./retrieval_service
       dockerfile: Dockerfile
+    restart: always
     ports:
       - "8001:8000"
     volumes:
@@ -42,7 +44,8 @@ services:
     build:
       context: ./retrieval_service
       dockerfile: Dockerfile
-    command: ["celery", "-A", "retrieval_service.worker.celery_app", "worker", "--loglevel=info"]
+    restart: always
+    command: ["sh", "-c", "PYTHONPATH=./src celery -A retrieval_service.worker.celery_app worker -c 1 --loglevel=info"]
     volumes:
       - ./retrieval_service:/app
       - shared_data:/app/data
@@ -59,8 +62,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
   chromadb:
     image: chromadb/chroma:latest

@@ -47,20 +47,44 @@ def get_torch_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+class LazyEmbeddingFunction(embedding_functions.EmbeddingFunction):
+    def __init__(self, name: str, init_fn):
+        self._name = name
+        self._init_fn = init_fn
+        self._embedder = None
+
+    def __call__(self, input):
+        if self._embedder is None:
+            self._embedder = self._init_fn()
+        return self._embedder(input)
+
+    def name(self):
+        return self._name
+
+
 def create_collections(
     chroma_client: chromadb.ClientAPI,
     device: str,
     config: RAGConfig
 ) -> RAGCollections:
-    english_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=config.english_embedding_model
+    english_embedder = LazyEmbeddingFunction(
+        "english_embedder",
+        lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=config.english_embedding_model
+        )
     )
-    arabic_embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=config.arabic_embedding_model
+    arabic_embedder = LazyEmbeddingFunction(
+        "arabic_embedder",
+        lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=config.arabic_embedding_model
+        )
     )
-    image_embedder = embedding_functions.OpenCLIPEmbeddingFunction(
-        model_name=config.image_embedding_model,
-        device=device
+    image_embedder = LazyEmbeddingFunction(
+        "image_embedder",
+        lambda: embedding_functions.OpenCLIPEmbeddingFunction(
+            model_name=config.image_embedding_model,
+            device=device
+        )
     )
 
     image_loader = ImageLoader()

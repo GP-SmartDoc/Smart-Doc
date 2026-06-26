@@ -56,7 +56,9 @@ def query(req: QueryRequest):
     )
     return result
 
+from retrieval_service.engine.file_utils import list_supported_documents
+
 @app.get("/documents")
 def list_documents():
-    rag = get_rag_engine()
-    return {"documents": rag.list_documents()}
+    docs_path = os.environ.get("DOCUMENTS_PATH", "/app/data/documents")
+    return {"documents": list_supported_documents(docs_path)}

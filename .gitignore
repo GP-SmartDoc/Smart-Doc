@@ -29,3 +29,4 @@ frontend/dist/
 frontend/coverage/
 frontend/.DS_Store
 frontend/*.log
+*.pyc
