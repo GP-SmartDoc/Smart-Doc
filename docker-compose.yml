@@ -9,11 +9,65 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - shared_data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
-    # If the app needs the .env file
+      - RETRIEVAL_SERVICE_URL=http://retrieval-api:8000
     env_file:
       - .env.example
+    depends_on:
+      - retrieval-api
+
+  retrieval-api:
+    build:
+      context: ./retrieval_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./retrieval_service:/app
+      - shared_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+    depends_on:
+      - chromadb
+      - redis
+
+  retrieval-worker:
+    build:
+      context: ./retrieval_service
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "retrieval_service.worker.celery_app", "worker", "--loglevel=info"]
+    volumes:
+      - ./retrieval_service:/app
+      - shared_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+    depends_on:
+      - chromadb
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8002:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
 
   frontend:
     build:
@@ -28,3 +82,7 @@ services:
       - backend
     environment:
       - VITE_API_URL=http://backend:8000
+
+volumes:
+  shared_data:
+  chroma_data:

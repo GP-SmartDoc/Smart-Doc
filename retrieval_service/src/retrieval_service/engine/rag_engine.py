@@ -2,7 +2,7 @@ import os
 
 import chromadb
 
-from smart_doc.retrieval.components import (
+from retrieval_service.engine.components import (
     RAGConfig,
     create_collections,
     create_splitters,
@@ -10,21 +10,21 @@ from smart_doc.retrieval.components import (
     load_caption_model,
     load_yolo_model,
 )
-from smart_doc.retrieval.file_utils import (
+from retrieval_service.engine.file_utils import (
     SUPPORTED_DOCUMENT_EXTENSIONS,
     compute_file_hash,
     list_supported_documents,
 )
-from smart_doc.retrieval.image_ingestion import add_image_file, caption_image
-from smart_doc.retrieval.language import (
+from retrieval_service.engine.image_ingestion import add_image_file, caption_image
+from retrieval_service.engine.language import (
     detect_text_language,
     get_text_collection,
     get_text_collection_by_language,
 )
-from smart_doc.retrieval.pdf_ingestion import add_pdf_file
-from smart_doc.retrieval.query import query_collections
-from smart_doc.retrieval.spreadsheet_ingestion import add_spreadsheet_file
-from smart_doc.retrieval.text_ingestion import add_text_file
+from retrieval_service.engine.pdf_ingestion import add_pdf_file
+from retrieval_service.engine.query import query_collections
+from retrieval_service.engine.spreadsheet_ingestion import add_spreadsheet_file
+from retrieval_service.engine.text_ingestion import add_text_file
 
 
 class RAGEngine:

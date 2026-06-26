@@ -1,7 +1,6 @@
 import os
 from typing import List
 
-import chromadb
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -21,7 +20,7 @@ from smart_doc.features.slide_generation.graph import generate_slides
 from smart_doc.features.summarization.graph import SummarizationModule
 from smart_doc.features.visualization.rag_graph import VisualizationModule
 from smart_doc.features.visualization.state import DiagramType
-from smart_doc.retrieval.rag_engine import RAGEngine
+from smart_doc.core.rag_engine_proxy import RAGEngineProxy
 from smart_doc.utils.helper import safe_json_parse
 from smart_doc.utils.pptx import save_as_pptx
 
@@ -54,12 +53,7 @@ def detect_diagram_type(prompt: str) -> DiagramType:
 
 print("--- Initializing Smart Doc System ---")
 
-client = chromadb.PersistentClient(path=CHROMA_DB_FOLDER)
-rag = RAGEngine(
-    client,
-    blob_storage_path=BLOB_STORAGE_FOLDER,
-    documents_path=UPLOAD_FOLDER,
-)
+rag = RAGEngineProxy()
 qa_module = QuestionAnsweringModule(retriever=rag)
 summary_module = SummarizationModule(retriever=rag)
 visualization_module = VisualizationModule(retriever=rag)
