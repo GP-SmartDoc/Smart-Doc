@@ -2,6 +2,7 @@
 .env.*
 !.env2.example
 backend/models/
+retrieval_service/models
 backend/data/
 backend/outputs/
 backend/download_models.py
