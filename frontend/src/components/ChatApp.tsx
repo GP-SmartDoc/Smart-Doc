@@ -22,6 +22,8 @@ mermaid.initialize({
   }
 });
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 const MermaidChart = ({ chart }: { chart: string }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartId = useRef(`mermaid-${Date.now()}-${Math.floor(Math.random() * 10000)}`).current;
@@ -320,7 +322,7 @@ export default function ChatApp() {
       };
       if (pySummaryMode) payload.summary_mode = pySummaryMode;
 
-      const res = await fetch("http://localhost:8000/send", {
+      const res = await fetch(`${API_BASE_URL}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -353,7 +355,7 @@ export default function ChatApp() {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'ai',
-        text: "Error communicating with local server. Ensure backend is running at http://localhost:8000.",
+        text: `Error communicating with server. Ensure backend is running at ${API_BASE_URL}.`,
         timestamp: new Date(),
       }]);
     } finally {
@@ -403,7 +405,7 @@ export default function ChatApp() {
       formData.append("files", file);
 
       try {
-        const res = await fetch("http://localhost:8000/upload", {
+        const res = await fetch(`${API_BASE_URL}/upload`, {
           method: "POST",
           body: formData
         });
@@ -442,7 +444,7 @@ export default function ChatApp() {
 
   const loadPDFs = async () => {
     try {
-      const res = await fetch("http://localhost:8000/documents");
+      const res = await fetch(`${API_BASE_URL}/documents`);
       const data = await res.json();
       if (data.documents) {
         setFiles(data.documents.map((doc: string) => ({ name: doc, size: 'Unknown' })));

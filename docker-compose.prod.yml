@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - shared_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - RETRIEVAL_SERVICE_URL=http://retrieval-api:8000
+    env_file:
+      - .env
+    depends_on:
+      - retrieval-api
+
+  retrieval-api:
+    build:
+      context: ./retrieval_service
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - shared_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      - chromadb
+      - redis
+
+  retrieval-worker:
+    build:
+      context: ./retrieval_service
+      dockerfile: Dockerfile
+    restart: always
+    command: ["sh", "-c", "PYTHONPATH=./src celery -A retrieval_service.worker.celery_app worker -c 1 --loglevel=info"]
+    volumes:
+      - shared_data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      - chromadb
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: always
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=/api
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  shared_data:
+  chroma_data:
