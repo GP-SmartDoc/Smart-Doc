@@ -418,9 +418,16 @@ export default function ChatApp() {
         const data = await res.json();
 
         let replyText = `❌ Upload failed for ${file.name}`;
-        if (data.uploaded && data.uploaded.includes(file.name)) {
+        const isUploaded = data.uploaded && data.uploaded.some((item: any) => 
+          typeof item === 'string' ? item === file.name : item.filename === file.name
+        );
+        const isSkipped = data.skipped && data.skipped.some((item: any) => 
+          typeof item === 'string' ? item === file.name : item.filename === file.name
+        );
+
+        if (isUploaded) {
           replyText = `✅ Uploaded ${file.name} successfully`;
-        } else if (data.skipped && data.skipped.includes(file.name)) {
+        } else if (isSkipped) {
           replyText = `Already indexed ${file.name}`;
         }
 
