@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { Send, Upload, ChevronLeft, ChevronDown, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X, Copy, Check, Search, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { motion } from 'motion/react';import { Send, Upload, ChevronLeft, ChevronDown, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X, Copy, Check, Search, MoreVertical, Edit2, Trash2, Download } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import mermaid from 'mermaid';
 
@@ -53,6 +52,9 @@ const MermaidChart = ({ chart }: { chart: string }) => {
 const AIMessageRender = ({ text, isStreaming, onComplete }: { text: string, isStreaming?: boolean, onComplete?: () => void }) => {
   // Strip any mermaid init blocks the LLM might hallucinate outside code blocks
   const sanitizedText = text.replace(/%%\{init:[\s\S]*?\}%%/g, '');
+  
+  // This correctly looks for the phrase in the actual message
+  const isSlidesSuccess = sanitizedText.toLowerCase().includes('slide generation completed');
 
   if (sanitizedText.includes('```mermaid')) {
     const parts = sanitizedText.split('```mermaid');
@@ -74,10 +76,28 @@ const AIMessageRender = ({ text, isStreaming, onComplete }: { text: string, isSt
   }
   
   if (isStreaming) {
-    return <Typewriter text={sanitizedText} onComplete={onComplete} />;
+    // 🔧 FIX: Removed the quotes around the variables here!
+    return <Typewriter onComplete={onComplete} text={sanitizedText} />;
   }
   
-  return <div dangerouslySetInnerHTML={{ __html: sanitizedText.replace(/\n/g, '<br/>') }} className="break-words w-full" />;
+  return (
+    <div className="flex flex-col gap-3">
+      <div dangerouslySetInnerHTML={{ __html: sanitizedText.replace(/\n/g, '<br/>') }} className="break-words w-full" />
+      
+      {/* The Download Button */}
+      {isSlidesSuccess && (
+        <a 
+          href="http://localhost:8000/download-slides" // ⚠️ Ensure this matches your Flask backend route
+          download="generated_slides.pptx"
+          className="mt-2 flex items-center gap-2 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-bold text-sm w-fit hover:scale-105 transition-transform shadow-lg shadow-blue-900/20"
+        >
+          {/* 🔧 FIX: Removed the quotes around the number 16 here! */}
+          <Download size={16} /> 
+          Download Presentation
+        </a>
+      )}
+    </div>
+  );
 };
 
 const Typewriter = ({ text, onComplete }: { text: string; onComplete?: () => void }) => {

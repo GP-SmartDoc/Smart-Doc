@@ -445,26 +445,40 @@
     // render mermaid if visualization
 
     if (data.reply.includes("```mermaid")) {
-
       const mermaidCode = data.reply
-
         .replace("```mermaid", "")
-
         .replace("```", "")
-
         .trim();
 
-
       typing.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
-
-
       mermaid.init(undefined, typing.querySelectorAll(".mermaid"));
 
     } else {
       const formattedReply = safeDecodeUnicode(data.reply).replace(/\n/g, "<br>");
       await typeWriterEffect(typing, formattedReply, 15);
+      
+      // 🔄 UPDATE THIS LINE to match the backend's message
+      if (data.reply.toLowerCase().includes("slide generation completed")) {
+        const downloadBtn = document.createElement("a");
+        downloadBtn.href = "http://localhost:8000/download-slides"; // ⚠️ Ensure this matches your Flask route
+        downloadBtn.download = "generated_slides.pptx"; 
+        downloadBtn.innerHTML = "📥 Download Slides";
+        
+        // Inline styling
+        downloadBtn.style.display = "inline-block";
+        downloadBtn.style.marginTop = "12px";
+        downloadBtn.style.padding = "8px 14px";
+        downloadBtn.style.backgroundColor = "#2563eb";
+        downloadBtn.style.color = "white";
+        downloadBtn.style.textDecoration = "none";
+        downloadBtn.style.borderRadius = "8px";
+        downloadBtn.style.fontWeight = "bold";
+        downloadBtn.style.fontSize = "14px";
+        
+        typing.appendChild(document.createElement("br"));
+        typing.appendChild(downloadBtn);
+      }
     }
-
 
     messages.scrollTop = messages.scrollHeight;
 
