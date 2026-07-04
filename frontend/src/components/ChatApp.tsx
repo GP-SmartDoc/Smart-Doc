@@ -691,14 +691,14 @@ export default function ChatApp() {
                 )}
                 <div className="flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${activeFileIndex !== null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">
+                  {/* <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">
                     {activeFileIndex !== null ? 'Gemini-2.0 Flash Active' : 'System Ready'}
-                  </span>
+                  </span> */}
                 </div>
               </div>
            </div>
            
-           <div className="flex items-center gap-3">
+           {/* <div className="flex items-center gap-3">
               <button 
                 type="button"
                 className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5 text-[10px] font-bold hover:bg-white/10 transition-colors">
@@ -710,7 +710,7 @@ export default function ChatApp() {
                 className="p-2 bg-white/5 rounded-lg border border-white/5 text-[#6b7280] hover:text-white transition-colors">
                 <Share2 size={16} />
               </button>
-           </div>
+           </div> */}
         </header>
 
         {/* Chat Body */}
@@ -840,12 +840,12 @@ export default function ChatApp() {
             </div>
             
             <div className="flex justify-between items-center px-1 mt-1">
-              <div className="flex gap-4">
+              {/* <div className="flex gap-4">
                 <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest flex items-center gap-1 focus-within:text-[#2563eb]">
                   <Zap size={10} /> Active Tokens: 1,402
                 </span>
-              </div>
-              <p className="text-[9px] text-[#6b7280] font-medium tracking-wide">AI Studio preview</p>
+              </div> */}
+              {/* <p className="text-[9px] text-[#6b7280] font-medium tracking-wide">AI Studio preview</p> */}
             </div>
           </div>
         </div>
