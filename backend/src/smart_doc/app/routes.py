@@ -168,22 +168,19 @@ async def upload_files(files: List[UploadFile] = File(...), x_user_id: str | Non
                 if not file_existed and os.path.exists(file_path):
                     os.remove(file_path)
                 skipped_files.append(file.filename)
+            elif result.get("status") == "queued":
+                uploaded_files.append({"filename": file.filename, "task_id": result.get("task_id")})
             else:
                 uploaded_files.append(file.filename)
 
         except Exception as e:
+            print(f"Error handling {file.filename}: {e}")
             if not file_existed and os.path.exists(file_path):
                 os.remove(file_path)
-            print(f"Error uploading {file.filename}: {e}")
-            failed_files.append(
-                {
-                    "file": file.filename,
-                    "error": str(e),
-                }
-            )
+            failed_files.append(file.filename)
 
     return {
         "uploaded": uploaded_files,
         "skipped": skipped_files,
-        "failed": failed_files,
+        "failed": failed_files
     }

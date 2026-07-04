@@ -40,6 +40,14 @@ class IngestRequest(BaseModel):
     file_path: str
     user_id: str | None = None
 
+class WipeRequest(BaseModel):
+    user_id: str | None = None
+
+@app.post("/wipe")
+def wipe(req: WipeRequest):
+    rag = get_rag_engine()
+    return rag.wipe(user_id=req.user_id)
+
 @app.post("/ingest")
 def ingest(req: IngestRequest):
     # Enqueue task to Celery

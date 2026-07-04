@@ -36,10 +36,9 @@ class RAGEngineProxy:
         except requests.exceptions.RequestException as e:
             raise HTTPException(status_code=503, detail=f"Retrieval service unavailable: {e}")
 
-    def list_documents(self, user_id=None):
+    def list_documents(self, user_id: str | None = None) -> list[str]:
         try:
-            params = {"user_id": user_id} if user_id else {}
-            response = requests.get(f"{RETRIEVAL_SERVICE_URL}/documents", params=params)
+            response = requests.get(f"{RETRIEVAL_SERVICE_URL}/documents", params={"user_id": user_id})
             response.raise_for_status()
             return response.json().get("documents", [])
         except requests.exceptions.RequestException as e:

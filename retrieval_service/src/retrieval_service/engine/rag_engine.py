@@ -233,3 +233,33 @@ class RAGEngine:
 
     def list_documents(self, user_id=None):
         return list_supported_documents(self.__documents_path, user_id=user_id)
+
+    def wipe(self, user_id=None):
+        import shutil
+        
+        # Global wipe: delete all entries from all collections
+        for collection in [self.__collections.arabic_text, self.__collections.english_text, self.__collections.images]:
+            try:
+                all_data = collection.get()
+                if all_data and all_data.get("ids"):
+                    all_ids = all_data["ids"]
+                    batch_size = 5000
+                    for i in range(0, len(all_ids), batch_size):
+                        collection.delete(ids=all_ids[i:i+batch_size])
+            except Exception as e:
+                print(f"Failed to wipe collection: {e}")
+                
+        # Delete all files in the documents directory
+        target_path = self.__documents_path
+        if os.path.exists(target_path):
+            for filename in os.listdir(target_path):
+                file_path = os.path.join(target_path, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print(f"Failed to delete {file_path}: {e}")
+                        
+        return {"status": "wiped", "scope": "global"}
