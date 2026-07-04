@@ -34,14 +34,16 @@ class QueryRequest(BaseModel):
     k_image: int = 4
     document: str | None = None
     include_encoded_images: bool = True
+    user_id: str | None = None
 
 class IngestRequest(BaseModel):
     file_path: str
+    user_id: str | None = None
 
 @app.post("/ingest")
 def ingest(req: IngestRequest):
     # Enqueue task to Celery
-    task = ingest_document.delay(req.file_path)
+    task = ingest_document.delay(req.file_path, req.user_id)
     return {"task_id": task.id, "status": "queued", "file_path": req.file_path}
 
 @app.post("/query")
@@ -52,13 +54,14 @@ def query(req: QueryRequest):
         k_text=req.k_text,
         k_image=req.k_image,
         document=req.document,
-        include_encoded_images=req.include_encoded_images
+        include_encoded_images=req.include_encoded_images,
+        user_id=req.user_id
     )
     return result
 
 from retrieval_service.engine.file_utils import list_supported_documents
 
 @app.get("/documents")
-def list_documents():
+def list_documents(user_id: str | None = None):
     docs_path = os.environ.get("DOCUMENTS_PATH", "/app/data/documents")
-    return {"documents": list_supported_documents(docs_path)}
+    return {"documents": list_supported_documents(docs_path, user_id=user_id)}

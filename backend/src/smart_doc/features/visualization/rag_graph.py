@@ -110,7 +110,8 @@ class VisualizationModule:
         self,
         request: str,
         diagram_type: DiagramType,
-        document: str = "all"
+        document: str = "all",
+        user_id: str = None
     ) -> str:
 
 
@@ -122,7 +123,8 @@ class VisualizationModule:
             request,
             k_text=6,
             k_image=4,
-            document=document
+            document=document,
+            user_id=user_id
         )
 
 

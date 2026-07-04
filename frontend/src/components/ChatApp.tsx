@@ -322,9 +322,11 @@ export default function ChatApp() {
       };
       if (pySummaryMode) payload.summary_mode = pySummaryMode;
 
+      const headers: any = { "Content-Type": "application/json" };
+      if (user?.uid) headers['X-User-ID'] = user.uid;
       const res = await fetch(`${API_BASE_URL}/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -405,8 +407,11 @@ export default function ChatApp() {
       formData.append("files", file);
 
       try {
+        const headers: any = {};
+        if (user?.uid) headers['X-User-ID'] = user.uid;
         const res = await fetch(`${API_BASE_URL}/upload`, {
           method: "POST",
+          headers,
           body: formData
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -444,7 +449,9 @@ export default function ChatApp() {
 
   const loadPDFs = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/documents`);
+      const headers: any = {};
+      if (user?.uid) headers['X-User-ID'] = user.uid;
+      const res = await fetch(`${API_BASE_URL}/documents`, { headers });
       const data = await res.json();
       if (data.documents) {
         setFiles(data.documents.map((doc: string) => ({ name: doc, size: 'Unknown' })));

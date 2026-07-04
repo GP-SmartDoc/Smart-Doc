@@ -47,7 +47,7 @@ class SummarizationModule:
 
         self.app = g.compile()
 
-    def invoke(self, question: str, document: str = "all", summary_mode: str = "overview"):
+    def invoke(self, question: str, document: str = "all", summary_mode: str = "overview", user_id: str = None):
         """
         Invokes the summarization pipeline.
         summary_mode: one of 'snapshot', 'overview', 'deepdive'
@@ -62,7 +62,7 @@ class SummarizationModule:
         if len(question.split()) <= 5 and any(w in question.lower() for w in ["summary", "brief", "detail"]):
             search_query = "abstract introduction main contribution methodology conclusion"
 
-        retrieved = self.retriever.query(search_query, k_text=6, k_image=4, document=document)
+        retrieved = self.retriever.query(search_query, k_text=6, k_image=4, document=document, user_id=user_id)
 
         text = " ".join(retrieved.get("text", []))
         doc_tokens = max(1, len(text) // 4)

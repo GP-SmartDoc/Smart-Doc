@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Request, UploadFile, Header
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -82,12 +82,12 @@ def extract_answer(result) -> str:
 
 
 @router.get("/documents")
-def list_documents():
-    return {"documents": rag.list_documents()}
+def list_documents(x_user_id: str | None = Header(default=None)):
+    return {"documents": rag.list_documents(user_id=x_user_id)}
 
 
 @router.post("/send")
-def receive_message(data: ChatRequest):
+def receive_message(data: ChatRequest, x_user_id: str | None = Header(default=None)):
     user_msg = data.message
     document = data.document
     enhanced_question = user_msg
@@ -96,6 +96,7 @@ def receive_message(data: ChatRequest):
         result = qa_module.invoke(
             question=enhanced_question,
             document=document,
+            user_id=x_user_id,
         )
         clean_answer = extract_answer(result)
         if(clean_answer[0] == '{'):
@@ -108,6 +109,7 @@ def receive_message(data: ChatRequest):
             question=enhanced_question,
             document=document,
             summary_mode=data.summary_mode,
+            user_id=x_user_id,
         )
 
         clean_answer = extract_answer(result)
@@ -121,6 +123,7 @@ def receive_message(data: ChatRequest):
             rag,
             enhanced_question,
             document=document,
+            user_id=x_user_id,
         )
         save_as_pptx(
             reply,
@@ -134,6 +137,7 @@ def receive_message(data: ChatRequest):
             request=enhanced_question,
             diagram_type=detect_diagram_type(user_msg),
             document=document,
+            user_id=x_user_id,
         )
 
     else:
@@ -143,20 +147,22 @@ def receive_message(data: ChatRequest):
 
 
 @router.post("/upload")
-async def upload_files(files: List[UploadFile] = File(...)):
+async def upload_files(files: List[UploadFile] = File(...), x_user_id: str | None = Header(default=None)):
     uploaded_files = []
     skipped_files = []
     failed_files = []
 
     for file in files:
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        user_upload_folder = os.path.join(UPLOAD_FOLDER, x_user_id) if x_user_id else UPLOAD_FOLDER
+        os.makedirs(user_upload_folder, exist_ok=True)
+        file_path = os.path.join(user_upload_folder, file.filename)
         file_existed = os.path.exists(file_path)
 
         try:
             with open(file_path, "wb") as f:
                 f.write(await file.read())
 
-            result = rag.add_file(file_path)
+            result = rag.add_file(file_path, user_id=x_user_id)
             print(f"File ingestion result for {file.filename}: {result}")
             if result.get("status") == "skipped":
                 if not file_existed and os.path.exists(file_path):

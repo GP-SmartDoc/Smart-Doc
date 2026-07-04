@@ -8,22 +8,26 @@ class RAGEngineProxy:
     def __init__(self, *args, **kwargs):
         pass
 
-    def add_file(self, file_path: str):
+    def add_file(self, file_path: str, user_id: str = None):
         # We assume the file is on a shared volume accessible by both services at the same path
         try:
-            response = requests.post(f"{RETRIEVAL_SERVICE_URL}/ingest", json={"file_path": file_path})
+            payload = {"file_path": file_path}
+            if user_id:
+                payload["user_id"] = user_id
+            response = requests.post(f"{RETRIEVAL_SERVICE_URL}/ingest", json=payload)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             raise HTTPException(status_code=503, detail=f"Retrieval service unavailable: {e}")
 
-    def query(self, prompt, k_text=6, k_image=4, document=None, include_encoded_images=True):
+    def query(self, prompt, k_text=6, k_image=4, document=None, include_encoded_images=True, user_id=None):
         payload = {
             "prompt": prompt,
             "k_text": k_text,
             "k_image": k_image,
             "document": document, 
-            "include_encoded_images": include_encoded_images
+            "include_encoded_images": include_encoded_images,
+            "user_id": user_id
         }
         try:
             response = requests.post(f"{RETRIEVAL_SERVICE_URL}/query", json=payload)
@@ -32,9 +36,10 @@ class RAGEngineProxy:
         except requests.exceptions.RequestException as e:
             raise HTTPException(status_code=503, detail=f"Retrieval service unavailable: {e}")
 
-    def list_documents(self):
+    def list_documents(self, user_id=None):
         try:
-            response = requests.get(f"{RETRIEVAL_SERVICE_URL}/documents")
+            params = {"user_id": user_id} if user_id else {}
+            response = requests.get(f"{RETRIEVAL_SERVICE_URL}/documents", params=params)
             response.raise_for_status()
             return response.json().get("documents", [])
         except requests.exceptions.RequestException as e:

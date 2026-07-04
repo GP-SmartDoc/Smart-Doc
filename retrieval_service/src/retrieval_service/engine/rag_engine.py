@@ -89,7 +89,7 @@ class RAGEngine:
             self.__collections.english_text
         )
 
-    def add_txt(self, file_path):
+    def add_txt(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
         if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
@@ -99,7 +99,8 @@ class RAGEngine:
             self.__splitters.child,
             self._get_collection_by_language,
             detect_text_language,
-            file_hash
+            file_hash,
+            user_id
         )
         return {"status": "indexed"}
 
@@ -127,7 +128,7 @@ class RAGEngine:
         # YOLO is only needed for PDF image extraction, not normal querying.
         self.__yolo = load_yolo_model(self.__config, self.__device)
 
-    def add_pdf(self, file_path):
+    def add_pdf(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
         if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
@@ -145,11 +146,12 @@ class RAGEngine:
             self.__config.ignored_layout_classes,
             self._get_collection_by_language,
             detect_text_language,
-            self.__collections.images
+            self.__collections.images,
+            user_id
         )
         return {"status": "indexed"}
 
-    def add_file(self, path: str):
+    def add_file(self, path: str, user_id=None):
         """
         Add a supported file by detecting its extension and routing it to the
         matching ingestion method.
@@ -160,23 +162,23 @@ class RAGEngine:
         extension = os.path.splitext(path)[1].lower()
 
         if extension == ".pdf":
-            return self.add_pdf(path)
+            return self.add_pdf(path, user_id)
 
         if extension == ".txt":
-            return self.add_txt(path)
+            return self.add_txt(path, user_id)
 
         if extension in {".png", ".jpg", ".jpeg", ".webp"}:
-            return self.add_image(path)
+            return self.add_image(path, user_id)
 
         if extension in {".xlsx", ".csv"}:
-            return self.add_spreadsheet(path)
+            return self.add_spreadsheet(path, user_id)
 
         supported = ", ".join(sorted(SUPPORTED_DOCUMENT_EXTENSIONS))
         raise ValueError(
             f"Unsupported file type '{extension}'. Supported types: {supported}"
         )
 
-    def add_image(self, file_path):
+    def add_image(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
         if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
@@ -189,11 +191,12 @@ class RAGEngine:
             detect_text_language,
             self.__caption_processor,
             self.__caption_model,
-            file_hash
+            file_hash,
+            user_id
         )
         return {"status": "indexed"}
 
-    def add_spreadsheet(self, file_path):
+    def add_spreadsheet(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
         if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
@@ -203,7 +206,8 @@ class RAGEngine:
             self.__splitters.child,
             self._get_collection_by_language,
             detect_text_language,
-            file_hash
+            file_hash,
+            user_id
         )
         return {"status": "indexed"}
 
@@ -213,7 +217,8 @@ class RAGEngine:
         k_text=6,
         k_image=4,
         document=None,
-        include_encoded_images=True
+        include_encoded_images=True,
+        user_id=None
     ):
         return query_collections(
             prompt,
@@ -222,8 +227,9 @@ class RAGEngine:
             k_text=k_text,
             k_image=k_image,
             document=document,
-            include_encoded_images=include_encoded_images
+            include_encoded_images=include_encoded_images,
+            user_id=user_id
         )
 
-    def list_documents(self):
-        return list_supported_documents(self.__documents_path)
+    def list_documents(self, user_id=None):
+        return list_supported_documents(self.__documents_path, user_id=user_id)

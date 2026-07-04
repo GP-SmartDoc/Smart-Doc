@@ -10,14 +10,18 @@ def query_collections(
     k_text=6,
     k_image=4,
     document=None,
-    include_encoded_images=True
+    include_encoded_images=True,
+    user_id=None
 ):
-    where_filter = None
+    where_filter = {}
 
     if document and document != "all":
-        where_filter = {
-            "document": document
-        }
+        where_filter["document"] = document
+    if user_id:
+        where_filter["user_id"] = user_id
+    
+    if len(where_filter) == 0:
+        where_filter = None
 
     target_col = get_collection(prompt)
     text_res = {}

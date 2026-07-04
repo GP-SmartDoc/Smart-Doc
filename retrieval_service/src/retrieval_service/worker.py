@@ -29,11 +29,11 @@ def get_rag_engine():
     return _rag_engine
 
 @celery_app.task(name="ingest_document")
-def ingest_document(file_path: str):
+def ingest_document(file_path: str, user_id: str | None = None):
     rag = get_rag_engine()
     print(f"Starting ingestion for {file_path}")
     try:
-        result = rag.add_file(file_path)
+        result = rag.add_file(file_path, user_id=user_id)
         print(f"Finished ingestion for {file_path}: {result}")
         return result
     except Exception as e:

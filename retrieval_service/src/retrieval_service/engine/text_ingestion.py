@@ -6,7 +6,8 @@ def add_text_file(
     child_splitter,
     get_collection_by_language,
     detect_language,
-    file_hash
+    file_hash,
+    user_id=None
 ):
     filename = os.path.basename(file_path)
     source = os.path.abspath(file_path)
@@ -33,7 +34,8 @@ def add_text_file(
             "content_type": "text",
             "source_type": "txt",
             "language": language,
-            "chunk_index": i
+            "chunk_index": i,
+            "user_id": user_id or "anonymous"
         })
 
     # Batch inserts avoid many small Chroma writes for larger text files.

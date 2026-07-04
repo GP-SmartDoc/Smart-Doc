@@ -35,7 +35,8 @@ def add_image_file(
     detect_language,
     caption_processor,
     caption_model,
-    file_hash
+    file_hash,
+    user_id=None
 ):
     abs_path = os.path.abspath(file_path)
     image = Image.open(abs_path)
@@ -52,7 +53,8 @@ def add_image_file(
             "file_hash": file_hash,
             "content_type": "image",
             "source_type": "standalone_image",
-            "document": os.path.basename(file_path)
+            "document": os.path.basename(file_path),
+            "user_id": user_id or "anonymous"
         }]
     )
 
@@ -67,6 +69,7 @@ def add_image_file(
             "content_type": "text",
             "source_type": "image_caption",
             "document": os.path.basename(file_path),
-            "language": caption_language
+            "language": caption_language,
+            "user_id": user_id or "anonymous"
         }]
     )

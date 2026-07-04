@@ -22,12 +22,13 @@ def compute_file_hash(file_path: str) -> str:
     return hasher.hexdigest()
 
 
-def list_supported_documents(documents_path: str) -> list[str]:
-    if not os.path.exists(documents_path):
+def list_supported_documents(documents_path: str, user_id: str | None = None) -> list[str]:
+    target_path = os.path.join(documents_path, user_id) if user_id else documents_path
+    if not os.path.exists(target_path):
         return []
 
     docs = [
-        f for f in os.listdir(documents_path)
+        f for f in os.listdir(target_path)
         if os.path.splitext(f)[1].lower() in SUPPORTED_DOCUMENT_EXTENSIONS
     ]
 

@@ -20,10 +20,15 @@ def add_pdf_file(
     ignored_layout_classes,
     get_collection_by_language,
     detect_language,
-    image_collection
+    image_collection,
+    user_id=None
 ):
     filename = os.path.basename(file_path)
 
+    if user_id:
+        documents_path = os.path.join(documents_path, user_id)
+        os.makedirs(documents_path, exist_ok=True)
+        
     stored_path = os.path.join(documents_path, filename)
     if not os.path.exists(stored_path):
         shutil.copy(file_path, stored_path)
@@ -44,7 +49,8 @@ def add_pdf_file(
             child_splitter,
             get_collection_by_language,
             detect_language,
-            os.path.abspath(file_path)
+            os.path.abspath(file_path),
+            user_id
         )
 
         _index_page_images(
@@ -56,7 +62,8 @@ def add_pdf_file(
             yolo,
             device,
             ignored_layout_classes,
-            image_collection
+            image_collection,
+            user_id
         )
 
     print(f"PDF indexed correctly: {filename}")
@@ -71,7 +78,8 @@ def _index_page_text(
     child_splitter,
     get_collection_by_language,
     detect_language,
-    source
+    source,
+    user_id
 ):
     parent_chunks = parent_splitter.split_text(page_content)
     batches = {}
@@ -97,7 +105,8 @@ def _index_page_text(
                 "source_type": "pdf",
                 "language": language,
                 "parent_chunk_index": p_id,
-                "child_chunk_index": c_id
+                "child_chunk_index": c_id,
+                "user_id": user_id or "anonymous"
             })
 
     # One add per language collection is much cheaper than one add per chunk.
@@ -118,7 +127,8 @@ def _index_page_images(
     yolo,
     device,
     ignored_layout_classes,
-    image_collection
+    image_collection,
+    user_id
 ):
     pix = page.get_pixmap(dpi=200)
     page_img = Image.open(
@@ -166,6 +176,7 @@ def _index_page_images(
                 "content_type": "image",
                 "source_type": "pdf_crop",
                 "layout_class": class_name,
-                "detection_index": det_id
+                "detection_index": det_id,
+                "user_id": user_id or "anonymous"
             }]
         )

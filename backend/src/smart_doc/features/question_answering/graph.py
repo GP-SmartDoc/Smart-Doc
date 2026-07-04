@@ -67,12 +67,12 @@ class QuestionAnsweringModule:
         g.add_edge("final", END)
 
         self.app = g.compile()
-    def invoke(self, question: str, document: str = "all"):
+    def invoke(self, question: str, document: str = "all", user_id: str = None):
         """
         intent: "qa" for full QA,
         """
 
-        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
+        retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document, user_id=user_id)
 
         state: QAState = {
             "llm_calls": 1,
