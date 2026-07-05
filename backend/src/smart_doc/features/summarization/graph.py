@@ -1,6 +1,8 @@
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
+from functools import partial
+from smart_doc.features.summarization.agents.complexity_agent import complexity_evaluator_agent
 from smart_doc.features.summarization.agents.summarization_agent import synthesis_agent
 from smart_doc.features.summarization.agents.two_step_text_agents import text_analyst_agent, text_aggregator_agent
 from smart_doc.features.summarization.agents.two_step_image_agents import image_analyst_agent, image_aggregator_agent
@@ -35,15 +37,21 @@ class SummarizationModule:
         g.add_node("text_aggregator", text_aggregator_agent)
         g.add_node("image_aggregator", image_aggregator_agent)
         g.add_node("synthesis", synthesis_agent)
+        
+        # Use partial to pass the retriever instance safely into the node execution
+        g.add_node("complexity_evaluator", partial(complexity_evaluator_agent, retriever=self.retriever))
 
-        # Text and image evidence are summarized independently, then merged once.
+        # Flow adjustments
         g.add_edge(START, "text_analyst")
         g.add_edge(START, "image_analyst")
         g.add_edge("text_analyst", "text_aggregator")
         g.add_edge("image_analyst", "image_aggregator")
         g.add_edge("text_aggregator", "synthesis")
         g.add_edge("image_aggregator", "synthesis")
-        g.add_edge("synthesis", END)
+        
+        # Synthesis now links to the evaluation agent instead of terminating directly
+        g.add_edge("synthesis", "complexity_evaluator")
+        g.add_edge("complexity_evaluator", END)
 
         self.app = g.compile()
 

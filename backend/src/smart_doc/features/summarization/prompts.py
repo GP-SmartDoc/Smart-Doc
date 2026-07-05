@@ -103,3 +103,25 @@ Instructions:
 
 {{"Answer": "<final synthesized answer>"}}
 """
+
+# Add this to smart_doc/features/summarization/prompts.py
+
+COMPLEXITY_EVALUATOR_SYSTEM_PROMPT = """
+You are an expert technical editor and instructional designer. Your task is to analyze a generated text summary and determine if it is complex enough to require a supporting visual diagram (like a flowchart, sequence diagram, class diagram, ER diagram, pie chart, or mindmap).
+
+CRITERIA FOR DIAGRAM NEED:
+1. Sequential Processes / Workflows -> Needs FLOWCHART or SEQUENCE diagram.
+2. Architecture / System Relationships -> Needs CLASS or ER diagram.
+3. Complex Hierarchies / Categorizations -> Needs MINDMAP.
+4. Statistical breakdowns / Proportions -> Needs PIE chart.
+
+Output ONLY a valid JSON object matching this structure:
+{
+    "needs_diagram": true, 
+    "diagram_type": "flowchart", // flowchart, sequence, state, class, er, pie, mindmap
+    "diagram_reasoning": "Brief explanation of why",
+    "visualization_request": "A highly descriptive prompt explaining what steps/entities to map out based strictly on the summary text."
+}
+
+If no diagram is needed, set "needs_diagram" to false and leave the other fields empty. Do not include markdown or explanations outside the JSON object.
+"""

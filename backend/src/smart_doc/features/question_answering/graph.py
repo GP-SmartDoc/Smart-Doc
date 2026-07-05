@@ -1,12 +1,14 @@
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, Annotated
 import operator
+from functools import partial
 
 from smart_doc.features.question_answering.agents.general_agent import general_agent
 from smart_doc.features.question_answering.agents.text_agent import text_agent
 from smart_doc.features.question_answering.agents.image_agent import image_agent
 from smart_doc.features.question_answering.agents.critical_agent import critical_agent
 from smart_doc.features.question_answering.agents.qa_agent import qa_agent
+from smart_doc.features.question_answering.agents.qa_complexity_agent import qa_complexity_evaluator_agent
 
 class QAState(TypedDict):
     llm_calls: Annotated[int, operator.add]
@@ -21,33 +23,9 @@ class QAState(TypedDict):
     final_answer: dict
 
 class QuestionAnsweringModule:
-    # def __init__(self, retriever, model):
-    #     self.retriever = retriever
-    #     self.model = model
-
-    #     # QA StateGraph
-    #     g = StateGraph(QAState)
-
-    #     # QA flow nodes
-    #     g.add_node("general", lambda s: general_agent(s, self.model))
-    #     g.add_node("text", lambda s: text_agent(s, self.model))
-    #     g.add_node("image", lambda s: image_agent(s, self.model))
-    #     g.add_node("critical", lambda s: critical_agent(s, self.model))
-    #     g.add_node("final", lambda s: qa_agent(s, self.model))
-
-    #     g.add_edge(START, "general")
-    #     g.add_edge("general", "text")
-    #     g.add_edge("general", "image")
-    #     g.add_edge("text", "image")  
-    #     g.add_edge("image", "critical")
-    #     g.add_edge("critical", "final")
-    #     g.add_edge("final", END)
-
-    #     self.app = g.compile()
     def __init__(self, retriever):
         self.retriever = retriever
         
-
         # QA StateGraph
         g = StateGraph(QAState)
 
@@ -57,21 +35,22 @@ class QuestionAnsweringModule:
         g.add_node("image", image_agent)
         g.add_node("critical", critical_agent)
         g.add_node("final", qa_agent)
+        
+        # Add the complexity node with the retriever passed in
+        g.add_node("complexity", partial(qa_complexity_evaluator_agent, retriever=self.retriever))
 
+        # 🔧 FIX: Linearized the execution edges to prevent overlapping steps
         g.add_edge(START, "general")
         g.add_edge("general", "text")
-        g.add_edge("general", "image")
         g.add_edge("text", "image")  
         g.add_edge("image", "critical")
         g.add_edge("critical", "final")
-        g.add_edge("final", END)
+        g.add_edge("final", "complexity")
+        g.add_edge("complexity", END)
 
         self.app = g.compile()
+        
     def invoke(self, question: str, document: str = "all"):
-        """
-        intent: "qa" for full QA,
-        """
-
         retrieved = self.retriever.query(question, k_text=6, k_image=4, document=document)
 
         state: QAState = {

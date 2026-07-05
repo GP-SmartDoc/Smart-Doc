@@ -100,10 +100,9 @@ def build_summary_reply(result) -> str:
     if isinstance(result, dict):
         diagram = result.get("Diagram", "").strip()
         if diagram:
+            # 🔧 FIX: Just add the mermaid diagram, without the reasoning text
             diagram_section = f"\n\n```mermaid\n{diagram}\n```"
-            diagram_reasoning = result.get("DiagramReasoning")
-            if diagram_reasoning:
-                diagram_section += f"\n\nDiagram reasoning: {diagram_reasoning}"
+            
             return summary_text + diagram_section
 
     return summary_text
