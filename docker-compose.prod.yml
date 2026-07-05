@@ -23,11 +23,15 @@ services:
     restart: always
     volumes:
       - shared_data:/app/data
+      - ./retrieval_service/models:/app/models
     environment:
       - PYTHONUNBUFFERED=1
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HOME=/app/models/.cache
     depends_on:
       - chromadb
       - redis
@@ -40,11 +44,15 @@ services:
     command: ["sh", "-c", "PYTHONPATH=./src celery -A retrieval_service.worker.celery_app worker -c 1 --loglevel=info"]
     volumes:
       - shared_data:/app/data
+      - ./retrieval_service/models:/app/models
     environment:
       - PYTHONUNBUFFERED=1
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HOME=/app/models/.cache
     depends_on:
       - chromadb
       - redis
