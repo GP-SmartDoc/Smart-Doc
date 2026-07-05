@@ -417,7 +417,7 @@ export default function ChatApp() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        let replyText = `❌ Upload failed for ${file.name}`;
+        let replyText = `❌ Upload failed for ${file.name}. Debug: ${JSON.stringify(data)}`;
         const isUploaded = data.uploaded && data.uploaded.some((item: any) => 
           typeof item === 'string' ? item === file.name : item.filename === file.name
         );
@@ -440,12 +440,12 @@ export default function ChatApp() {
 
         // Refresh documents list
         loadPDFs();
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
         setMessages(prev => [...prev, {
           id: 'upload-' + Date.now() + '-' + i,
           type: 'ai',
-          text: `❌ Upload failed for ${file.name}`,
+          text: `❌ Upload failed for ${file.name}. Error: ${error.message || error}`,
           timestamp: new Date()
         }]);
       } finally {
