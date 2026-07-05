@@ -60,10 +60,8 @@ class RAGEngine:
     def _compute_file_hash(self, file_path: str) -> str:
         return compute_file_hash(file_path)
 
-    def _is_file_indexed(self, file_hash: str, user_id: str | None = None) -> bool:
+    def _is_file_indexed(self, file_hash: str) -> bool:
         where = {"file_hash": file_hash}
-        if user_id:
-            where["user_id"] = user_id
         collections = (
             self.__collections.arabic_text,
             self.__collections.english_text,
@@ -93,7 +91,7 @@ class RAGEngine:
 
     def add_txt(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash, user_id):
+        if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
 
         add_text_file(
@@ -132,7 +130,7 @@ class RAGEngine:
 
     def add_pdf(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash, user_id):
+        if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
 
         self._ensure_yolo_model()
@@ -180,27 +178,9 @@ class RAGEngine:
             f"Unsupported file type '{extension}'. Supported types: {supported}"
         )
 
-    def add_presentation(self, file_path, user_id=None):
-        file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash, user_id):
-            return {"status": "skipped", "reason": "duplicate_file"}
-
-        self._ensure_caption_model()
-        add_image_file(
-            file_path,
-            self.__collections.images,
-            self._get_collection_by_language,
-            detect_text_language,
-            self.__caption_processor,
-            self.__caption_model,
-            file_hash,
-            user_id
-        )
-        return {"status": "indexed"}
-
     def add_image(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash, user_id):
+        if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
 
         self._ensure_caption_model()
@@ -218,7 +198,7 @@ class RAGEngine:
 
     def add_spreadsheet(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash, user_id):
+        if self._is_file_indexed(file_hash):
             return {"status": "skipped", "reason": "duplicate_file"}
 
         add_spreadsheet_file(

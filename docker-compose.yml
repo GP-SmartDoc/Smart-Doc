@@ -36,7 +36,7 @@ services:
       - CHROMA_PORT=8000
       - HF_HUB_OFFLINE=1
       - TRANSFORMERS_OFFLINE=1
-      - HF_HOME=/app/models/.cache/huggingface
+      - HF_HOME=/app/models/.cache
     depends_on:
       - chromadb
       - redis
@@ -57,7 +57,7 @@ services:
       - CHROMA_PORT=8000
       - HF_HUB_OFFLINE=1
       - TRANSFORMERS_OFFLINE=1
-      - HF_HOME=/app/models/.cache/huggingface
+      - HF_HOME=/app/models/.cache
     depends_on:
       - chromadb
       - redis
