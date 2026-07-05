@@ -165,9 +165,11 @@ async def upload_files(files: List[UploadFile] = File(...), x_user_id: str | Non
             result = rag.add_file(file_path, user_id=x_user_id)
             print(f"File ingestion result for {file.filename}: {result}")
             if result.get("status") == "skipped":
-                if not file_existed and os.path.exists(file_path):
-                    os.remove(file_path)
-                skipped_files.append(file.filename)
+                # The file is a duplicate in the vector DB (same content was indexed before,
+                # possibly by another user). The file is intentionally kept in this user's
+                # folder so it shows up in their documents list and they can query it.
+                # From the user's perspective this is a successful upload.
+                uploaded_files.append({"filename": file.filename, "task_id": None})
             elif result.get("status") == "queued":
                 uploaded_files.append({"filename": file.filename, "task_id": result.get("task_id")})
             else:
