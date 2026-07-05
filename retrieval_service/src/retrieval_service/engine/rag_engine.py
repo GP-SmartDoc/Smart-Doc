@@ -91,8 +91,6 @@ class RAGEngine:
 
     def add_txt(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash):
-            return {"status": "skipped", "reason": "duplicate_file"}
 
         add_text_file(
             file_path,
@@ -130,8 +128,6 @@ class RAGEngine:
 
     def add_pdf(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash):
-            return {"status": "skipped", "reason": "duplicate_file"}
 
         self._ensure_yolo_model()
         add_pdf_file(
@@ -180,8 +176,6 @@ class RAGEngine:
 
     def add_image(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash):
-            return {"status": "skipped", "reason": "duplicate_file"}
 
         self._ensure_caption_model()
         add_image_file(
@@ -198,8 +192,6 @@ class RAGEngine:
 
     def add_spreadsheet(self, file_path, user_id=None):
         file_hash = self._compute_file_hash(file_path)
-        if self._is_file_indexed(file_hash):
-            return {"status": "skipped", "reason": "duplicate_file"}
 
         add_spreadsheet_file(
             file_path,
