@@ -2,8 +2,8 @@ import os
 from typing import List
 
 import chromadb
-from fastapi import APIRouter, File, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, File, Request, UploadFile, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from smart_doc.app import formatting
@@ -79,6 +79,35 @@ def extract_answer(result) -> str:
     return str(answer)
 
 
+def build_summary_reply(result) -> str:
+    if isinstance(result, str):
+        parsed = safe_json_parse(result, {})
+        if isinstance(parsed, dict):
+            result = parsed
+
+    answer_text = ""
+    if isinstance(result, dict):
+        answer_text = result.get("Answer", "") or result.get("final_summary", "")
+        if isinstance(answer_text, dict):
+            answer_text = str(answer_text)
+    else:
+        answer_text = str(result)
+
+    summary_text = answer_text.strip()
+    if "```mermaid" not in summary_text:
+        summary_text = formatting.format_summarize_output(summary_text)
+
+    if isinstance(result, dict):
+        diagram = result.get("Diagram", "").strip()
+        if diagram:
+            # 🔧 FIX: Just add the mermaid diagram, without the reasoning text
+            diagram_section = f"\n\n```mermaid\n{diagram}\n```"
+            
+            return summary_text + diagram_section
+
+    return summary_text
+
+
 # @router.get("/", response_class=HTMLResponse)
 # def home(request: Request):
 #     return templates.TemplateResponse(
@@ -116,11 +145,7 @@ def receive_message(data: ChatRequest):
             summary_mode=data.summary_mode,
         )
 
-        clean_answer = extract_answer(result)
-        if(clean_answer[0] == '{'):
-            clean_answer = clean_answer[12:-2]
-
-        reply = formatting.format_summarize_output(clean_answer)
+        reply = build_summary_reply(result)
 
     elif data.mode == "slide_generation":
         reply = generate_slides(
@@ -187,3 +212,17 @@ async def upload_files(files: List[UploadFile] = File(...)):
         "skipped": skipped_files,
         "failed": failed_files,
     }
+
+@router.get("/download-slides")
+async def download_slides():
+    # Use the SLIDES_OUTPUT_PATH variable already imported in your file
+    file_path = SLIDES_OUTPUT_PATH
+    
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path, 
+            filename="generated_slides.pptx", 
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
+    else:
+        raise HTTPException(status_code=404, detail="Slide file not found on the server.")

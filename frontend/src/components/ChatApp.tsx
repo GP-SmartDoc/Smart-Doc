@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Send, Upload, ChevronLeft, ChevronDown, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X, Copy, Check, Search, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Send, Upload, ChevronLeft, ChevronDown, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X, Copy, Check, Search, MoreVertical, Edit2, Trash2, Download } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import mermaid from 'mermaid';
 
@@ -53,7 +53,7 @@ const MermaidChart = ({ chart }: { chart: string }) => {
 const AIMessageRender = ({ text, isStreaming, onComplete }: { text: string, isStreaming?: boolean, onComplete?: () => void }) => {
   // Strip any mermaid init blocks the LLM might hallucinate outside code blocks
   const sanitizedText = text.replace(/%%\{init:[\s\S]*?\}%%/g, '');
-
+  const isSlidesSuccess = sanitizedText.toLowerCase().includes('slide generation completed');
   if (sanitizedText.includes('```mermaid')) {
     const parts = sanitizedText.split('```mermaid');
     const preText = parts[0];
@@ -74,10 +74,29 @@ const AIMessageRender = ({ text, isStreaming, onComplete }: { text: string, isSt
   }
   
   if (isStreaming) {
-    return <Typewriter text={sanitizedText} onComplete={onComplete} />;
+    // 🔧 FIX: Removed the quotes around the variables here!
+    return <Typewriter onComplete={onComplete} text={sanitizedText} />;
   }
-  
-  return <div dangerouslySetInnerHTML={{ __html: sanitizedText.replace(/\n/g, '<br/>') }} className="break-words w-full" />;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div dangerouslySetInnerHTML={{ __html: sanitizedText.replace(/\n/g, '<br/>') }} className="break-words w-full" />
+      
+      {/* The Download Button */}
+      {isSlidesSuccess && (
+        <a 
+          href="http://localhost:8000/download-slides" // ⚠️ Ensure this matches your Flask backend route
+          download="generated_slides.pptx"
+          className="mt-2 flex items-center gap-2 px-4 py-2 bg-[#2563eb] text-white rounded-lg font-bold text-sm w-fit hover:scale-105 transition-transform shadow-lg shadow-blue-900/20"
+        >
+          {/* 🔧 FIX: Removed the quotes around the number 16 here! */}
+          <Download size={16} /> 
+          Download Presentation
+        </a>
+      )}
+    </div>
+  );
+
 };
 
 const Typewriter = ({ text, onComplete }: { text: string; onComplete?: () => void }) => {
@@ -138,8 +157,13 @@ export default function ChatApp() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  
+  const backendUrl = (import.meta as any).env.VITE_API_BASE_URL || "http://localhost:8000";
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isGenerating = isTyping || messages.some(m => m.type === 'ai' && m.isStreaming);
 
   // Close menu on outside click
   useEffect(() => {
@@ -177,13 +201,29 @@ export default function ChatApp() {
   useEffect(() => {
     if (!user) {
       setChats([]);
+      setFiles([]);
+      setActiveFileIndex(null);
       return;
     }
-    const key = `smartdoc_chats_${user.uid}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
+
+    const userKey = user.uid;
+    const filesKey = `smartdoc_user_files_${userKey}`;
+    const savedFiles = localStorage.getItem(filesKey);
+    let loadedFiles = [];
+    if (savedFiles) {
       try {
-        const parsed = JSON.parse(saved);
+        loadedFiles = JSON.parse(savedFiles);
+      } catch (e) {
+        console.error("Failed to parse user files", e);
+      }
+    }
+    setFiles(loadedFiles);
+
+    const chatsKey = `smartdoc_chats_${userKey}`;
+    const savedChats = localStorage.getItem(chatsKey);
+    if (savedChats) {
+      try {
+        const parsed = JSON.parse(savedChats);
         parsed.forEach((c: any) => {
           c.updatedAt = new Date(c.updatedAt);
           c.messages.forEach((m: any) => {
@@ -195,11 +235,22 @@ export default function ChatApp() {
         if (parsed.length > 0) {
           setCurrentChatId(parsed[0].id);
           setMessages(parsed[0].messages);
-          setFiles(parsed[0].files || []);
-          setActiveFileIndex(parsed[0].activeFileIndex);
+          const savedIndex = parsed[0].activeFileIndex;
+          if (loadedFiles.length > 0) {
+            setActiveFileIndex(savedIndex !== null && savedIndex >= 0 && savedIndex < loadedFiles.length ? savedIndex : loadedFiles.length - 1);
+          } else {
+            setActiveFileIndex(null);
+          }
         }
       } catch (e) {
         console.error("Failed parsing history", e);
+      }
+    } else {
+      setChats([]);
+      if (loadedFiles.length > 0) {
+        setActiveFileIndex(loadedFiles.length - 1);
+      } else {
+        setActiveFileIndex(null);
       }
     }
   }, [user?.uid]);
@@ -241,8 +292,13 @@ export default function ChatApp() {
   const loadChat = (chat: ChatSession) => {
     setCurrentChatId(chat.id);
     setMessages(chat.messages);
-    setFiles(chat.files);
-    setActiveFileIndex(chat.activeFileIndex);
+    if (chat.activeFileIndex !== null && chat.activeFileIndex >= 0 && chat.activeFileIndex < files.length) {
+      setActiveFileIndex(chat.activeFileIndex);
+    } else if (files.length > 0) {
+      setActiveFileIndex(files.length - 1);
+    } else {
+      setActiveFileIndex(null);
+    }
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
@@ -254,8 +310,11 @@ export default function ChatApp() {
     const newId = Date.now().toString();
     setCurrentChatId(newId);
     setMessages([{ id: newId, type: 'ai', text: `Hello ${user?.displayName || 'there'}! I'm SmartDoc. Upload a PDF and I'll help you analyze it. What would you like to do?`, timestamp: new Date() }]);
-    setFiles([]);
-    setActiveFileIndex(null);
+    if (files.length > 0) {
+      setActiveFileIndex(files.length - 1);
+    } else {
+      setActiveFileIndex(null);
+    }
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
@@ -283,9 +342,10 @@ export default function ChatApp() {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (isGenerating || !input.trim()) return;
 
-    const documentName = activeFileIndex !== null ? files[activeFileIndex].name : "all";
+    const documentIndex = activeFileIndex ?? (files.length - 1);
+    const documentName = files[documentIndex]?.name || "all";
     const userMsg: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -320,7 +380,7 @@ export default function ChatApp() {
       };
       if (pySummaryMode) payload.summary_mode = pySummaryMode;
 
-      const res = await fetch("http://localhost:8000/send", {
+      const res = await fetch(`${backendUrl}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -353,7 +413,7 @@ export default function ChatApp() {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'ai',
-        text: "Error communicating with local server. Ensure backend is running at http://localhost:8000.",
+        text: `Error communicating with server. Ensure backend is running at ${backendUrl}.`,
         timestamp: new Date(),
       }]);
     } finally {
@@ -380,14 +440,6 @@ export default function ChatApp() {
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
       const sizeStr = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
-      
-      setFiles(prev => {
-        const exists = prev.find(f => f.name === file.name);
-        if (exists) return prev;
-        const next = [...prev, { name: file.name, size: sizeStr }];
-        setTimeout(() => setActiveFileIndex(next.length - 1), 0);
-        return next;
-      });
 
       // Show user message for file submission like the old html does
       const fileMsg: Message = {
@@ -403,7 +455,7 @@ export default function ChatApp() {
       formData.append("files", file);
 
       try {
-        const res = await fetch("http://localhost:8000/upload", {
+        const res = await fetch(`${backendUrl}/upload`, {
           method: "POST",
           body: formData
         });
@@ -411,10 +463,26 @@ export default function ChatApp() {
         const data = await res.json();
 
         let replyText = `❌ Upload failed for ${file.name}`;
+        let success = false;
         if (data.uploaded && data.uploaded.includes(file.name)) {
           replyText = `✅ Uploaded ${file.name} successfully`;
+          success = true;
         } else if (data.skipped && data.skipped.includes(file.name)) {
           replyText = `Already indexed ${file.name}`;
+          success = true;
+        }
+
+        if (success) {
+          setFiles(prev => {
+            const exists = prev.find(f => f.name === file.name);
+            const next = exists ? prev : [...prev, { name: file.name, size: sizeStr }];
+            const lastIndex = next.length - 1;
+            setTimeout(() => setActiveFileIndex(lastIndex), 0);
+            
+            const userKey = user ? user.uid : 'guest';
+            localStorage.setItem(`smartdoc_user_files_${userKey}`, JSON.stringify(next));
+            return next;
+          });
         }
 
         setMessages(prev => [...prev, {
@@ -424,14 +492,12 @@ export default function ChatApp() {
           timestamp: new Date()
         }]);
 
-        // Refresh documents list
-        loadPDFs();
       } catch (error) {
         console.error(error);
         setMessages(prev => [...prev, {
           id: 'upload-' + Date.now() + '-' + i,
           type: 'ai',
-          text: `❌ Upload failed for ${file.name}`,
+          text: `❌ Upload failed for ${file.name}. Please ensure the backend is running at ${backendUrl} and CORS is configured properly.`,
           timestamp: new Date()
         }]);
       } finally {
@@ -440,21 +506,31 @@ export default function ChatApp() {
     }
   };
 
-  const loadPDFs = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/documents");
-      const data = await res.json();
-      if (data.documents) {
-        setFiles(data.documents.map((doc: string) => ({ name: doc, size: 'Unknown' })));
+  const loadPDFs = () => {
+    const userKey = user ? user.uid : 'guest';
+    const key = `smartdoc_user_files_${userKey}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFiles(parsed);
+        if (parsed.length > 0) {
+          setActiveFileIndex(parsed.length - 1);
+        } else {
+          setActiveFileIndex(null);
+        }
+      } catch (e) {
+        console.error("Failed to load user files:", e);
       }
-    } catch (error) {
-      console.error("Failed to load PDFs:", error);
+    } else {
+      setFiles([]);
+      setActiveFileIndex(null);
     }
   };
 
   useEffect(() => {
     loadPDFs();
-  }, []);
+  }, [user?.uid]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -540,8 +616,8 @@ export default function ChatApp() {
                type="button"
                onClick={createNewChat}
                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#2563eb] text-white rounded-xl font-bold text-sm hover:scale-[1.02] transition-transform shadow-lg shadow-blue-900/10"
-              >
-              <Plus size={18} /> New Chat
+             >
+               <Plus size={18} /> New Chat
              </button>
           </div>
 
@@ -659,14 +735,13 @@ export default function ChatApp() {
                 {files.length > 0 ? (
                   <div className="relative flex items-center group cursor-pointer -mx-1 px-1 rounded hover:bg-white/5">
                     <span className="text-sm font-bold text-white pr-5 truncate max-w-[150px] md:max-w-[250px]">
-                      {activeFileIndex === null ? "All Documents" : files[activeFileIndex]?.name}
+                      {files[activeFileIndex ?? (files.length - 1)]?.name}
                     </span>
                     <select 
-                      value={activeFileIndex === null ? 'all' : activeFileIndex.toString()} 
-                      onChange={(e) => setActiveFileIndex(e.target.value === 'all' ? null : Number(e.target.value))}
+                      value={(activeFileIndex ?? (files.length - 1)).toString()} 
+                      onChange={(e) => setActiveFileIndex(Number(e.target.value))}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     >
-                      <option value="all" className="bg-[#111318] text-white">All Documents</option>
                       {files.map((f, i) => (
                         <option key={i} value={i} className="bg-[#111318] text-white">
                           {f.name}
@@ -680,16 +755,16 @@ export default function ChatApp() {
                     No Document Selected
                   </h2>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${activeFileIndex !== null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                {/* <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${files.length > 0 ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
                   <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">
-                    {activeFileIndex !== null ? 'Gemini-2.0 Flash Active' : 'System Ready'}
+                    {files.length > 0 ? 'Gemini-2.0 Flash Active' : 'System Ready'}
                   </span>
-                </div>
+                </div> */}
               </div>
            </div>
            
-           <div className="flex items-center gap-3">
+           {/* <div className="flex items-center gap-3">
               <button 
                 type="button"
                 className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5 text-[10px] font-bold hover:bg-white/10 transition-colors">
@@ -701,7 +776,7 @@ export default function ChatApp() {
                 className="p-2 bg-white/5 rounded-lg border border-white/5 text-[#6b7280] hover:text-white transition-colors">
                 <Share2 size={16} />
               </button>
-           </div>
+           </div> */}
         </header>
 
         {/* Chat Body */}
@@ -811,37 +886,47 @@ export default function ChatApp() {
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={mode === 'Summary' ? `Explain with ${summarySubMode}...` : `Type your request for ${mode} mode...`}
-                className="w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-12 pr-12 py-3.5 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-xl text-white"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isGenerating) {
+                    handleSend();
+                  }
+                }}
+                disabled={isGenerating}
+                placeholder={isGenerating ? "Please wait for the response to finish..." : (mode === 'Summary' ? `Explain with ${summarySubMode}...` : `Type your request for ${mode} mode...`)}
+                className={`w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-12 pr-12 py-3.5 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-xl text-white ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
-              <div 
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 hover:bg-white/5 rounded-lg text-[#6b7280] hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                onClick={triggerFileUpload}
-              >
-                <Upload size={18} />
-              </div>
               <button 
                 type="button"
-                onClick={handleSend}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-[#2563eb] text-white rounded-lg flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-blue-900/20"
+                className={`absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-lg text-[#6b7280] transition-colors flex items-center justify-center ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5 hover:text-white cursor-pointer'}`}
+                onClick={isGenerating ? undefined : triggerFileUpload}
+                disabled={isGenerating}
+              >
+                <Upload size={18} />
+              </button>
+              <button 
+                type="button"
+                onClick={isGenerating ? undefined : handleSend}
+                disabled={isGenerating || !input.trim()}
+                className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isGenerating || !input.trim() ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed' : 'bg-[#2563eb] text-white hover:scale-105 shadow-lg shadow-blue-900/20 cursor-pointer'}`}
               >
                 <Send size={14} />
               </button>
             </div>
             
-            <div className="flex justify-between items-center px-1 mt-1">
+            {/* <div className="flex justify-between items-center px-1 mt-1">
               <div className="flex gap-4">
                 <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest flex items-center gap-1 focus-within:text-[#2563eb]">
                   <Zap size={10} /> Active Tokens: 1,402
                 </span>
               </div>
               <p className="text-[9px] text-[#6b7280] font-medium tracking-wide">AI Studio preview</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </main>
       
+
+
       {/* Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#2563eb]/5 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
     </motion.div>
