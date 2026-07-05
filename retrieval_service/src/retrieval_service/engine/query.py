@@ -13,14 +13,17 @@ def query_collections(
     include_encoded_images=True,
     user_id=None
 ):
-    where_filter = {}
-
+    conditions = []
     if document and document != "all":
-        where_filter["document"] = document
+        conditions.append({"document": document})
     if user_id:
-        where_filter["user_id"] = user_id
+        conditions.append({"user_id": user_id})
     
-    if len(where_filter) == 0:
+    if len(conditions) == 1:
+        where_filter = conditions[0]
+    elif len(conditions) > 1:
+        where_filter = {"$and": conditions}
+    else:
         where_filter = None
 
     target_col = get_collection(prompt)

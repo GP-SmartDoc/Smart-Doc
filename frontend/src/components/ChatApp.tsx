@@ -352,12 +352,12 @@ export default function ChatApp() {
         isStreaming: true
       };
       setMessages(prev => [...prev, aiResponse]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         type: 'ai',
-        text: `Error communicating with server. Ensure backend is running at ${API_BASE_URL}.`,
+        text: `Error communicating with server (${API_BASE_URL}). Details: ${error.message || error}`,
         timestamp: new Date(),
       }]);
     } finally {
