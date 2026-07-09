@@ -7,7 +7,9 @@
 Smart-Doc is a multi-agent, retrieval-augmented platform that reads your PDFs and documents — **text *and* images** — and lets you summarize them at any depth, generate visual diagrams, build presentation slides, and chat with the content in **English or Arabic**.
 
 <!-- TODO: replace the links below with your real URLs -->
-[🌐 **Live Demo**](https://your-deployed-site.example.com) &nbsp;•&nbsp; [🎬 **Demo Video**](https://your-demo-video-link.example.com) &nbsp;•&nbsp; [▶️ **Watch the Trailer**](https://youtube.com/your-marketing-video)
+[🌐 **Live Demo**](https://your-deployed-site.example.com) &nbsp;•&nbsp; [🎬 **Demo Video**](https://your-demo-video-link.example.com) &nbsp;•&nbsp; [▶️ **Watch Markting Video
+
+**](https://youtu.be/aEpr-a9NB5A?si=uJuArfv6aeJmAIRi)
 
 > ⚠️ **Heads up:** the live site is still under active development and may occasionally be unstable or offline.
 
