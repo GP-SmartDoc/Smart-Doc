@@ -256,12 +256,18 @@ Smart-Doc draws on ideas from recent research in multi-agent document understand
 
 This project was developed as a graduation project by:
 
-- Name — role / focus
-- Name — role / focus
-- Name — role / focus
-- Name — role / focus
+- Youssef Ahmed Mostafa
+- Youssef Mohammed Ahmed
+- Youssef Mohsen Reda
+- Waleed Ahmed Ashour
+- Anas Wael Mohammed
+- Mohammed Ahmed Abdelsattar
 
-Supervised by: _Supervisor name_
+Supervised by: Dr. Donia Gamal
+
+Ain Shams University
+Faculty of Computer & Information Sciences
+Computer Science Department
 
 ---
 
