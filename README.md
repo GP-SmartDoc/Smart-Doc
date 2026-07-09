@@ -269,7 +269,3 @@ Faculty of Computer & Information Sciences
 Computer Science Department
 
 ---
-
-## 📄 License
-
-This project is released under the **MIT License**. See [`LICENSE`](LICENSE) for details.
