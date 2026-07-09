@@ -1,13 +1,14 @@
 <div align="center">
 
-# 📄 Smart-Doc
+<img src="assets/Smart-Doc%20Logo.png" alt="Smart-Doc logo" width="220"/>
+
+# Smart-Doc
 
 ### Multimodal Document Intelligence — turn any document into summaries, diagrams, slides, and answers
 
 Smart-Doc is a multi-agent, retrieval-augmented platform that reads your PDFs and documents — **text *and* images** — and lets you summarize them at any depth, generate visual diagrams, build presentation slides, and chat with the content in **English or Arabic**.
 
-<!-- TODO: replace the links below with your real URLs -->
-[🌐 **Live Demo**](http://40.81.243.229/) &nbsp;•&nbsp; [🎬 **Demo Video**](https://drive.google.com/file/d/1FaGiYbbEwkm1wcuerrbqoT-O8aeWJw7k/view?usp=sharing) &nbsp;•&nbsp; [▶️ **Watch Markting Video**](https://youtu.be/aEpr-a9NB5A?si=uJuArfv6aeJmAIRi)
+[🌐 **Live Demo**](http://40.81.243.229/) &nbsp;•&nbsp; [🎬 **Demo Video**](https://drive.google.com/file/d/1FaGiYbbEwkm1wcuerrbqoT-O8aeWJw7k/view?usp=sharing) &nbsp;•&nbsp; [▶️ **Watch Marketing Video**](https://youtu.be/aEpr-a9NB5A?si=uJuArfv6aeJmAIRi)
 
 > ⚠️ **Heads up:** the live site is still under active development and may occasionally be unstable or offline.
 
@@ -81,6 +82,12 @@ Every request is scoped by a user ID, so each user only ever retrieves and reaso
 
 Smart-Doc is split into three application services plus two infrastructure components, all orchestrated with Docker Compose over a shared data volume.
 
+<div align="center">
+
+<img src="assets/HighLevelArch3.png" alt="Smart-Doc high-level architecture" width="850"/>
+
+</div>
+
 **Request flow at a glance:**
 1. The **frontend** authenticates users (Firebase) and sends chat/upload requests to the backend.
 2. The **backend** picks the right LangGraph pipeline (summary / visualization / slides / QA) and calls the retrieval service for grounding context.
@@ -97,7 +104,6 @@ Smart-Doc is split into three application services plus two infrastructure compo
 | **LLM providers** | Groq, OpenAI-compatible endpoints, Ollama (configurable) |
 | **Retrieval / RAG** | FastAPI, ChromaDB, sentence-transformers, OpenCLIP, BLIP captioning, PyMuPDF, Ultralytics (YOLO), langdetect |
 | **Async & infra** | Celery, Redis, Docker, Docker Compose |
-| **CI** | GitHub Actions (pytest + Ruff) |
 
 ---
 
@@ -180,6 +186,7 @@ Smart-Doc/
 │       ├── main.py               # retrieval API
 │       └── worker.py             # Celery ingestion worker
 │
+├── assets/                       # logo, architecture diagram, etc.
 ├── docker-compose.yml            # local/dev orchestration
 ├── docker-compose.prod.yml       # production orchestration
 └── .env.example                  # environment template
@@ -193,10 +200,9 @@ Smart-Doc/
 
 Smart-Doc brings together ideas from recent multi-agent and multimodal-RAG research into a single, working, end-to-end system. Our main contributions are:
 
-- **A unified multimodal RAG pipeline** that indexes and retrieves both text and images, so every feature reasons over figures as well as prose — not just plain text.
-- **Feature-specific multi-agent workflows** built as explicit LangGraph state machines, giving each capability (summarization, visualization, slides, Q&A) a transparent, debuggable *analyze → aggregate → review → synthesize* flow.
-- **Adaptive, budget-controlled summarization** with three depth modes driven by a token/compression budget rather than a fixed prompt.
-- **First-class Arabic support**, with automatic language detection and dedicated Arabic/English embedding collections.
+- **Unified AI platform.** Four document-intelligence modules — summarization, diagram generation, slide generation, and Q&A — brought together in one place instead of scattered across separate tools, all sharing the same multimodal retrieval backbone.
+- **Privacy & localization.** Smart-Doc can run fully on your own machine. With a local LLM backend (Ollama) and locally downloaded embedding and captioning models, no document ever has to leave your infrastructure — ideal when data privacy matters.
+- **Adaptive visual integration.** Diagram generation isn't a standalone feature; it's woven into the other modules. When an output is complex and needs more explanation, Smart-Doc automatically brings in a visual to make it clearer.
 - **A production-minded, containerized architecture** — separate orchestration and retrieval services, asynchronous ingestion via Celery/Redis, per-user data isolation, and a one-command Docker Compose deployment.
 
 ---
@@ -205,13 +211,11 @@ Smart-Doc brings together ideas from recent multi-agent and multimodal-RAG resea
 
 <!-- TODO: adjust to match your team's actual roadmap -->
 
-- **Stabilize and scale the deployment** — harden the live site, add health checks, autoscaling, and monitoring.
-- **Broader file support** — expand ingestion beyond PDFs to Word, PowerPoint, and web pages.
+- **Meeting/Video Integration** — Upload meeting recordings or lectures and automatically generate summaries, slides, and Q&A.
+- **Interactive Slide Editing** — Enable real-time presentation editing with native PowerPoint and Google Slides export.
 - **Richer slide themes** — additional templates and layout options for generated decks.
-- **Streaming responses** — token-by-token streaming for summaries and Q&A to improve perceived latency.
-- **Evaluation suite** — automated benchmarks for summary faithfulness, retrieval quality, and diagram accuracy.
-- **More languages** — extend beyond Arabic and English using additional embedding models.
-- **Collaboration features** — shared workspaces and document libraries across users.
+- **Voice-Driven Synthesis** — Support collaborative sessions with voice interaction through speech-to-text and text-to-speech.
+
 
 ---
 
@@ -223,8 +227,6 @@ Smart-Doc draws on ideas from recent research in multi-agent document understand
 
 ## 👥 Team
 
-<!-- TODO: add your team members and roles -->
-
 This project was developed as a graduation project by:
 
 - Youssef Ahmed Mostafa
@@ -234,7 +236,7 @@ This project was developed as a graduation project by:
 - Anas Wael Mohammed
 - Mohammed Ahmed Abdelsattar
 
-Supervised by: Dr. Donia Gamal
+Supervised by: **Dr. Donia Gamal**
 
 Ain Shams University
 Faculty of Computer & Information Sciences
