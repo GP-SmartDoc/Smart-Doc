@@ -7,9 +7,7 @@
 Smart-Doc is a multi-agent, retrieval-augmented platform that reads your PDFs and documents — **text *and* images** — and lets you summarize them at any depth, generate visual diagrams, build presentation slides, and chat with the content in **English or Arabic**.
 
 <!-- TODO: replace the links below with your real URLs -->
-[🌐 **Live Demo**](https://your-deployed-site.example.com) &nbsp;•&nbsp; [🎬 **Demo Video**](https://your-demo-video-link.example.com) &nbsp;•&nbsp; [▶️ **Watch Markting Video
-
-**](https://youtu.be/aEpr-a9NB5A?si=uJuArfv6aeJmAIRi)
+[🌐 **Live Demo**](http://40.81.243.229/) &nbsp;•&nbsp; [🎬 **Demo Video**](https://drive.google.com/file/d/1FaGiYbbEwkm1wcuerrbqoT-O8aeWJw7k/view?usp=sharing) &nbsp;•&nbsp; [▶️ **Watch Markting Video**](https://youtu.be/aEpr-a9NB5A?si=uJuArfv6aeJmAIRi)
 
 > ⚠️ **Heads up:** the live site is still under active development and may occasionally be unstable or offline.
 
@@ -105,7 +103,7 @@ Smart-Doc is split into three application services plus two infrastructure compo
 
 ## 🚀 Getting Started
 
-### Run with Docker (recommended)
+### Run with Docker
 
 The whole stack — frontend, backend, retrieval API, ingestion worker, Redis, and ChromaDB — comes up together.
 
@@ -120,7 +118,10 @@ cd Smart-Doc
 cp .env.example .env
 #   then open .env and add your API keys
 
-# 3. Build and start everything
+# 3. download models so they can be mounted into the container.
+python retrieval_service/download_models.py
+
+# 4. Build and start everything
 docker compose up --build
 ```
 
@@ -132,37 +133,6 @@ Once it's running:
 | Backend API | http://localhost:8000 |
 | Retrieval API | http://localhost:8001 |
 | ChromaDB | http://localhost:8002 |
-
-> **Note:** The retrieval service uses local ML models (embeddings, captioning, CLIP). For the production compose file, download them once with `python retrieval_service/download_models.py` so they can be mounted into the container.
-
-### Run locally for development
-
-Run the retrieval stack in Docker and the app services on your machine, or run each service directly.
-
-**Backend**
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn --app-dir src smart_doc.app.main:app --reload --port 8000
-```
-
-**Retrieval service** (needs Redis + ChromaDB running, e.g. via Docker)
-```bash
-cd retrieval_service
-pip install -r requirements.txt
-python download_models.py        # one-time model download
-# API:
-PYTHONPATH=./src uvicorn --app-dir src retrieval_service.main:app --reload --port 8001
-# Worker (separate terminal):
-PYTHONPATH=./src celery -A retrieval_service.worker.celery_app worker --loglevel=info
-```
-
-**Frontend**
-```bash
-cd frontend
-npm install
-npm run dev        # serves on http://localhost:3000
-```
 
 ---
 
