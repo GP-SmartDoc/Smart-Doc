@@ -15,7 +15,6 @@ Smart-Doc is a multi-agent, retrieval-augmented platform that reads your PDFs an
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![React](https://img.shields.io/badge/react-19-61dafb)
 ![Docker](https://img.shields.io/badge/docker-compose-2496ed)
-![License](https://img.shields.io/badge/license-MIT-green)
 
 </div>
 
